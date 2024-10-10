@@ -57,7 +57,7 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "v${{ env.CURRENT_VERSIONNUMBER }}"
           prerelease: false
-          title: "dtuGateway v${{ env.CURRENT_VERSIONNUMBER }}"
+          title: "LEDdimmerMQTT v${{ env.CURRENT_VERSIONNUMBER }}"
           files: |
             .pio/build/esp12e/LEDdimmerMQTT_ESP8266_release_${{ env.CURRENT_VERSIONNUMBER }}.bin
             .pio/build/esp32/LEDdimmerMQTT_ESP32_release_${{ env.CURRENT_VERSIONNUMBER }}.bin
