@@ -62,8 +62,8 @@ extern baseDataStruct platformData;
 #ifndef baseUpdateInfoStruct
 struct baseUpdateInfoStruct
 {
-    char updateInfoWebPath[128] = "https://github.com/ohAnd/dtuGateway/releases/download/snapshot/version.json";
-    char updateInfoWebPathRelease[128] = "https://github.com/ohAnd/dtuGateway/releases/latest/download/version.json";
+    char updateInfoWebPath[128] = "https://github.com/ohAnd/LEDdimmerMQTT/releases/download/snapshot/version.json";
+    char updateInfoWebPathRelease[128] = "https://github.com/ohAnd/LEDdimmerMQTT/releases/latest/download/version.json";
 
     char versionServer[32] = "checking";
     char versiondateServer[32] = "...";

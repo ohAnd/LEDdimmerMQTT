@@ -315,7 +315,7 @@ void setup()
     Serial.println("Ready! Open http://" + platformData.espUniqueName + ".local in your browser");
 
     // default setting for mqtt main topic
-    ("dtu_" + String(platformData.chipID)).toCharArray(userConfig.mqttBrokerMainTopic, sizeof(userConfig.mqttBrokerMainTopic));
+    ("LEDdimmerMQTT_" + String(platformData.chipID)).toCharArray(userConfig.mqttBrokerMainTopic, sizeof(userConfig.mqttBrokerMainTopic));
     configManager.saveConfig(userConfig);
 
     dtuWebServer.start();

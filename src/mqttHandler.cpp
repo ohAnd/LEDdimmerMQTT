@@ -101,7 +101,6 @@ void MQTTHandler::publishDiscoveryMessage(const char *entity, const char *entity
     String entityName = String(entity).substring(String(entity).indexOf("_") + 1);
     String commandEntityName = String(commandEntity).substring(String(commandEntity).indexOf("_") + 1);
 
-    // Create the config topic path for the entity e.g. "homeassistant/sensor/dtuGateway_12345678/grid_U/config"
     String configTopicPath = "homeassistant/light/" + String(deviceGroupName) + "/" + String(entity) + "/config";
     // Create the state topic path for the entity e.g. "LEDdimmerMQTT_12345678/grid/U"
     String stateTopicPath = "homeassistant/light/" + String(deviceGroupName) + "/" + String(entity) + "/state";
@@ -309,13 +308,6 @@ void MQTTHandler::setMainTopic(String mainTopicPath)
 {
     stopConnection();
     mqttMainTopicPath = mainTopicPath;
-}
-
-void MQTTHandler::setRemoteDisplayData(boolean remoteDisplayActive)
-{
-    Serial.println("MQTT:\t\t ... set remote display data to: " + String(remoteDisplayActive));
-    stopConnection();
-    instance->lastRemoteInverterData.remoteDisplayActive = remoteDisplayActive;
 }
 
 // Setter method to combine all settings

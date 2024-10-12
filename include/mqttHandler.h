@@ -27,31 +27,7 @@ struct LedDimmerSet {
     boolean setSwitchUpdate = false;
 };
 
-struct RemoteBaseData
-{
-  float current = 0;
-  float voltage = 0;
-  float power = -1;
-  float dailyEnergy = 0;
-  float totalEnergy = 0;
-};
 
-struct RemoteInverterData
-{
-  RemoteBaseData grid;
-  RemoteBaseData pv0;
-  RemoteBaseData pv1;
-  float inverterTemp = 0;
-  uint8_t powerLimit = 254;
-  uint32_t dtuRssi = 0;
-  uint32_t wifi_rssi_gateway = 0;
-  boolean cloudPause = false;
-  boolean dtuConnectionOnline = false;
-  uint8_t dtuConnectState = 0;
-  uint32_t respTimestamp = 1704063600;     // init with start time stamp > 0
-  boolean updateReceived = false;
-  boolean remoteDisplayActive = false;
-};
 
 class MQTTHandler {
 public:
@@ -104,7 +80,6 @@ private:
     unsigned long lastReconnectAttempt = 0;
 
     LedDimmerSet lastDimmerSet;
-    RemoteInverterData lastRemoteInverterData;
     
     void reconnect();
     boolean initiateDiscoveryMessages(bool autoDiscoveryRemove=false);

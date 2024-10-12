@@ -91,7 +91,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
                 </div>
                 <hr>
                 <div>
-                    MQTT main topic for this dtu (e.g. dtu_12345678 will appear as 'dtu_12345678/grid/U' in the broker -
+                    MQTT main topic for this LEDdimmer (e.g. LEDdimmerMQTT_12345678 will appear as 'homeassistant/light/LEDdimmerMQTT_12345678/led0' in the broker -
                     has to be unique in your setup):
                 </div>
                 <div>
@@ -762,7 +762,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             console.log("got from server: " + strResult);
             console.log("got from server - strResult.dtuHostIpDomain: " + strResult.mqttBrokerIpDomain + " - cmp with: " + mqttIpSend);
 
-            if (strResult.mqttBrokerIpDomainPort == mqttIpSend && strResult.mqttBrokerUser == mqttUserSend) {
+            if (strResult.mqttBrokerIpDomain == mqttIpSend && strResult.mqttBrokerUser == mqttUserSend) {
                 console.log("check saved data - OK");
                 showAlert('change bindings settings', 'Your settings were successfully saved and will be applied.', 'alert-success');
             } else {

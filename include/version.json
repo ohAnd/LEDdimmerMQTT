@@ -1,6 +1,6 @@
 {
-    "version": "0.0.256_localDev",
-    "versiondate": "09.10.2024 - 09:28:23",
-    "linksnapshot": "https://github.com/ohAnd/dtuGateway/releases/download/snapshot/dtuGateway_snapshot_0.0.256_localDev.bin",
-    "link": "https://github.com/ohAnd/dtuGateway/releases/latest/download/dtuGateway_release_0.0.256_localDev.bin"
+    "version": "0.0.291_localDev",
+    "versiondate": "11.10.2024 - 20:17:45",
+    "linksnapshot": "https://github.com/ohAnd/LEDdimmerMQTT/releases/download/snapshot/LEDdimmerMQTT_snapshot_0.0.291_localDev.bin",
+    "link": "https://github.com/ohAnd/LEDdimmerMQTT/releases/latest/download/LEDdimmerMQTT_release_0.0.291_localDev.bin"
 }

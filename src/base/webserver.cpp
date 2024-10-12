@@ -438,7 +438,7 @@ void DTUwebserver::handleUpdateMqttSettings(AsyncWebServerRequest *request)
         JSON = JSON + "\"mqttActive\": " + userConfig.mqttActive + ",";
         JSON = JSON + "\"mqttBrokerIpDomain\": \"" + userConfig.mqttBrokerIpDomain + "\",";
         JSON = JSON + "\"mqttBrokerPort\": " + String(userConfig.mqttBrokerPort) + ",";
-        JSON = JSON + "\"mqttBrokerIpDomainPort:" + userConfig.mqttBrokerIpDomain + ":" + String(userConfig.mqttBrokerPort) + "\",";
+        JSON = JSON + "\"mqttBrokerIpDomainPort\": \"" + userConfig.mqttBrokerIpDomain + ":" + String(userConfig.mqttBrokerPort) + "\",";
         JSON = JSON + "\"mqttUseTLS\": " + userConfig.mqttUseTLS + ",";
         JSON = JSON + "\"mqttBrokerUser\": \"" + userConfig.mqttBrokerUser + "\",";
         JSON = JSON + "\"mqttBrokerPassword\": \"" + userConfig.mqttBrokerPassword + "\",";

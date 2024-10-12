@@ -16,8 +16,8 @@ struct UserConfig
     char mqttBrokerIpDomain[128]  = "192.168.1.100";
     int mqttBrokerPort            = 1883;
     boolean mqttUseTLS            = false;
-    char mqttBrokerUser[64]       = "dtuuser";
-    char mqttBrokerPassword[64]   = "dtupass";
+    char mqttBrokerUser[64]       = "LEDuser";
+    char mqttBrokerPassword[64]   = "LEDpass";
     char mqttBrokerMainTopic[32]  = "LEDdimmerMQTT_12345678";
     boolean mqttHAautoDiscoveryON = false;
     boolean mqttActive            = false;
