@@ -4,7 +4,11 @@ boolean wifiScanIsRunning = false;
 
 size_t content_len;
 
-struct ledDimmerStruct ledDimmerData;
+struct ledDimmerStruct ledDimmerData_0;
+struct ledDimmerStruct ledDimmerData_1;
+struct ledDimmerStruct ledDimmerData_2;
+struct ledDimmerStruct ledDimmerData_3;
+struct ledDimmerStruct ledDimmerData_4;
 
 DTUwebserver::DTUwebserver()
 {
@@ -56,7 +60,6 @@ void DTUwebserver::start()
     asyncDtuWebServer.on("/config", handleConfigPage);
 
     // direct settings
-    asyncDtuWebServer.on("/updatePowerLimit", handleUpdatePowerLimit);
     asyncDtuWebServer.on("/getWifiNetworks", handleGetWifiNetworks);
 
     // api GETs
@@ -196,6 +199,23 @@ void DTUwebserver::handleConfigPage(AsyncWebServerRequest *request)
                 String key = request->argName(i);
                 String value = request->arg(key);
 
+                // exception for led iteration needed - json is led[0].ledPWMpin and so on
+                if (key.indexOf("led.") > -1)
+                {
+                    String key1 = key.substring(0, key.indexOf("."));
+                    int index = key.substring(key.indexOf(".") + 1, key.lastIndexOf(".")).toInt();
+                    String key3 = key.substring(key.lastIndexOf(".") + 1);
+
+                    if (value == "false" || value == "true")
+                    {
+                        bool boolValue = (value == "true");
+                        doc[key1][index][key3] = boolValue;
+                    }
+                    else
+                        doc[key1][index][key3] = value;
+                    continue;
+                }
+
                 String key1 = key.substring(0, key.indexOf("."));
                 String key2 = key.substring(key.indexOf(".") + 1);
 
@@ -221,19 +241,20 @@ void DTUwebserver::handleConfigPage(AsyncWebServerRequest *request)
 }
 
 // serve json as api
-void DTUwebserver::setLEDdata(ledDimmerStruct ledDimmerDataIn)
+void DTUwebserver::setLEDdata(ledDimmerStruct ledDimmerDataIn[5])
 {
     // set led data
-    ledDimmerData = ledDimmerDataIn;
+    ledDimmerData_0 = ledDimmerDataIn[0];
+    ledDimmerData_1 = ledDimmerDataIn[1];
+    ledDimmerData_2 = ledDimmerDataIn[2];
+    ledDimmerData_3 = ledDimmerDataIn[3];
+    ledDimmerData_4 = ledDimmerDataIn[4];
 }
 
-void DTUwebserver::handleDataJson(AsyncWebServerRequest *request)
+String DTUwebserver::ledStateToJSON(ledDimmerStruct ledDimmerData)
 {
-    String JSON = "{";
-    JSON = JSON + "\"ntpStamp\": " + String(platformData.currentNTPtime - userConfig.timezoneOffest) + ",";
-    JSON = JSON + "\"starttime\": " + String(platformData.dtuGWstarttime - userConfig.timezoneOffest) + ",";
-
-    JSON = JSON + "\"led_0\": {";
+    String JSON = "";
+    JSON = JSON + "{";
     JSON = JSON + "\"mainSwitch\": " + String(ledDimmerData.mainSwitch) + ",";
     JSON = JSON + "\"dimValue\": " + String(ledDimmerData.dimValue) + ",";
     JSON = JSON + "\"dimValueTarget\": " + String(ledDimmerData.dimValueTarget) + ",";
@@ -242,6 +263,37 @@ void DTUwebserver::handleDataJson(AsyncWebServerRequest *request)
     JSON = JSON + "\"dimValueStepDelay\": " + String(ledDimmerData.dimValueStepDelay);
     JSON = JSON + "}";
 
+    return JSON;
+}
+
+String DTUwebserver::ledSettingsToJSON(ledDimmerStruct ledDimmerData)
+{
+    String JSON = "";
+    JSON = JSON + "{";
+    JSON = JSON + "\"ledPWMpin\": " + ledDimmerData.ledPWMpin + ",";
+    JSON = JSON + "\"dimValueStep\": " + ledDimmerData.dimValueStep + ",";
+    JSON = JSON + "\"dimValueStepDelay\": " + ledDimmerData.dimValueStepDelay;
+    JSON = JSON + "}";
+    return JSON;
+}
+
+void DTUwebserver::handleDataJson(AsyncWebServerRequest *request)
+{
+    String JSON = "{";
+    JSON = JSON + "\"ntpStamp\": " + String(platformData.currentNTPtime - userConfig.timezoneOffest) + ",";
+    JSON = JSON + "\"starttime\": " + String(platformData.dtuGWstarttime - userConfig.timezoneOffest) + ",";
+
+    JSON = JSON + "\"leds\": [";
+    JSON += ledStateToJSON(ledDimmerData_0);
+    if (ledDimmerData_1.ledPWMpin != 255)
+        JSON += "," + ledStateToJSON(ledDimmerData_1);
+    if (ledDimmerData_2.ledPWMpin != 255)
+        JSON += "," + ledStateToJSON(ledDimmerData_2);
+    if (ledDimmerData_3.ledPWMpin != 255)
+        JSON += "," + ledStateToJSON(ledDimmerData_3);
+    if (ledDimmerData_4.ledPWMpin != 255)
+        JSON += "," + ledStateToJSON(ledDimmerData_4);
+    JSON = JSON + "]";
     JSON = JSON + "}";
 
     request->send(200, "application/json; charset=utf-8", JSON);
@@ -266,10 +318,17 @@ void DTUwebserver::handleInfojson(AsyncWebServerRequest *request)
     JSON = JSON + "\"updateAvailable\": " + updateInfo.updateAvailable;
     JSON = JSON + "},";
 
-    JSON = JSON + "\"ledSettings\": {";
-    JSON = JSON + "\"dimValueStep\": " + ledDimmerData.dimValueStep + ",";
-    JSON = JSON + "\"dimValueStepDelay\": " + ledDimmerData.dimValueStepDelay;
-    JSON = JSON + "},";
+    JSON = JSON + "\"ledSettings\": [";
+    JSON += ledSettingsToJSON(ledDimmerData_0);
+    if (ledDimmerData_1.ledPWMpin != 255)
+        JSON += "," + ledSettingsToJSON(ledDimmerData_1);
+    if (ledDimmerData_2.ledPWMpin != 255)
+        JSON += "," + ledSettingsToJSON(ledDimmerData_2);
+    if (ledDimmerData_3.ledPWMpin != 255)
+        JSON += "," + ledSettingsToJSON(ledDimmerData_3);
+    if (ledDimmerData_4.ledPWMpin != 255)
+        JSON += "," + ledSettingsToJSON(ledDimmerData_4);
+    JSON = JSON + "],";
 
     JSON = JSON + "\"mqttConnection\": {";
     JSON = JSON + "\"mqttActive\": " + userConfig.mqttActive + ",";
@@ -343,22 +402,66 @@ void DTUwebserver::handleUpdateWifiSettings(AsyncWebServerRequest *request)
 
 void DTUwebserver::handleUpdateLedSettings(AsyncWebServerRequest *request)
 {
-    if (request->hasParam("dimValueStepSend", true) &&
-        request->hasParam("dimValueStepDelaySend", true))
+    if (request->hasParam("dimValueStep_0_Send", true) &&
+        request->hasParam("dimValueStepDelay_0_Send", true))
     {
-        String dimValueStepSend = request->getParam("dimValueStepSend", true)->value();           // retrieve message from webserver
-        String dimValueStepDelaySend = request->getParam("dimValueStepDelaySend", true)->value(); // retrieve message from webserver
+        // String dimValueStep_0_Send = request->getParam("dimValueStep_0_Send", true)->value();           // retrieve message from webserver
+        // String dimValueStepDelay_0_Send = request->getParam("dimValueStepDelay_0_Send", true)->value(); // retrieve message from webserver
+        // Serial.println("WEB:\t\t handleUpdateLedSettings - got dimValueStep: " + dimValueStep_0_Send + "- got dimValueStepDelay: " + dimValueStepDelay_0_Send);
 
-        Serial.println("WEB:\t\t handleUpdateLedSettings - got dimValueStep: " + dimValueStepSend + "- got dimValueStepDelay: " + dimValueStepDelaySend);
+        for (u8_t i = 0; i < LED_DIMMER_COUNT; i++)
+        {
+            String param1 = "dimValueStep_" + String(i) + "_Send";
+            String param2 = "dimValueStepDelay_" + String(i) + "_Send";
+            if (request->hasParam(param1, true) && request->hasParam(param2, true))
+            {
+                String dimValueStep_x_Send = request->getParam(param1, true)->value();           // retrieve message from webserver
+                String dimValueStepDelay_x_Send = request->getParam(param2, true)->value(); // retrieve message from webserver
 
-        userConfig.dimValueStep = dimValueStepSend.toInt();
-        userConfig.dimValueStepDelay = dimValueStepDelaySend.toInt();
+                Serial.println("WEB:\t\t handleUpdateLedSettings - got for LED " + String(i) + " dimValueStep: " + dimValueStep_x_Send + "- got dimValueStepDelay: " + dimValueStepDelay_x_Send);
+
+                userConfig.ledDimmerConfigs[i].dimValueStep = dimValueStep_x_Send.toInt();
+                userConfig.ledDimmerConfigs[i].dimValueStepDelay = dimValueStepDelay_x_Send.toInt();
+            }
+        }
+
+        // userConfig.dimValueStep_0 = dimValueStep_0_Send.toInt();
+        // userConfig.dimValueStepDelay_0 = dimValueStepDelay_0_Send.toInt();
+
+        // if (request->hasParam("dimValueStep_1_Send", true) && request->hasParam("dimValueStepDelay_1_Send", true))
+        // {
+        //     userConfig.dimValueStep_1 = request->getParam("dimValueStep_1_Send", true)->value().toInt();
+        //     userConfig.dimValueStepDelay_1 = request->getParam("dimValueStepDelay_1_Send", true)->value().toInt();
+        // }
+
+        // if (request->hasParam("dimValueStep_2_Send", true) && request->hasParam("dimValueStepDelay_2_Send", true))
+        // {
+        //     userConfig.dimValueStep_2 = request->getParam("dimValueStep_2_Send", true)->value().toInt();
+        //     userConfig.dimValueStepDelay_2 = request->getParam("dimValueStepDelay_2_Send", true)->value().toInt();
+        // }
+
+        // if (request->hasParam("dimValueStep_3_Send", true) && request->hasParam("dimValueStepDelay_3_Send", true))
+        // {
+        //     userConfig.dimValueStep_3 = request->getParam("dimValueStep_3_Send", true)->value().toInt();
+        //     userConfig.dimValueStepDelay_3 = request->getParam("dimValueStepDelay_3_Send", true)->value().toInt();
+        // }
+
+        // if (request->hasParam("dimValueStep_4_Send", true) && request->hasParam("dimValueStepDelay_4_Send", true))
+        // {
+        //     userConfig.dimValueStep_4 = request->getParam("dimValueStep_4_Send", true)->value().toInt();
+        //     userConfig.dimValueStepDelay_4 = request->getParam("dimValueStepDelay_4_Send", true)->value().toInt();
+        // }
 
         configManager.saveConfig(userConfig);
 
         String JSON = "{";
-        JSON = JSON + "\"dimValueStep\": \"" + userConfig.dimValueStep + "\",";
-        JSON = JSON + "\"dimValueStepDelay\": \"" + userConfig.dimValueStepDelay + "\"";
+        for (u8_t i = 0; i < LED_DIMMER_COUNT; i++)
+        {
+            JSON = JSON + "\"dimValueStep_" + String(i) + "\": " + String(userConfig.ledDimmerConfigs[i].dimValueStep) + ",";
+            JSON = JSON + "\"dimValueStepDelay_" + String(i) + "\": " + String(userConfig.ledDimmerConfigs[i].dimValueStepDelay);
+            if (i < LED_DIMMER_COUNT - 1)
+                JSON = JSON + ",";
+        }
         JSON = JSON + "}";
 
         request->send(200, "application/json", JSON);
@@ -421,7 +524,7 @@ void DTUwebserver::handleUpdateMqttSettings(AsyncWebServerRequest *request)
         if (userConfig.mqttActive)
         {
             // changing to given mqtt setting - inlcuding reset the connection
-            mqttHandler.setConfiguration(userConfig.mqttBrokerIpDomain, userConfig.mqttBrokerPort, userConfig.mqttBrokerUser, userConfig.mqttBrokerPassword, userConfig.mqttUseTLS, (platformData.espUniqueName).c_str(), userConfig.mqttBrokerMainTopic, userConfig.mqttHAautoDiscoveryON, ((platformData.dtuGatewayIP).toString()).c_str());
+            // mqttHandler.setConfiguration(userConfig.mqttBrokerIpDomain, userConfig.mqttBrokerPort, userConfig.mqttBrokerUser, userConfig.mqttBrokerPassword, userConfig.mqttUseTLS, (platformData.espUniqueName).c_str(), userConfig.mqttBrokerMainTopic, userConfig.mqttHAautoDiscoveryON, ((platformData.dtuGatewayIP).toString()).c_str());
 
             Serial.println("WEB:\t\t handleUpdateMqttSettings - HAautoDiscovery new state: " + String(userConfig.mqttHAautoDiscoveryON));
             // mqttHAautoDiscoveryON going from on to off - send one time the delete messages
@@ -432,6 +535,9 @@ void DTUwebserver::handleUpdateMqttSettings(AsyncWebServerRequest *request)
 
             // after changing of auto discovery stop connection to initiate takeover of new settings
             // mqttHandler.stopConnection();
+
+            platformData.rebootRequestedInSec = 3;
+            platformData.rebootRequested = true;
         }
 
         String JSON = "{";
@@ -453,55 +559,6 @@ void DTUwebserver::handleUpdateMqttSettings(AsyncWebServerRequest *request)
     {
         request->send(400, "text/plain", "handleUpdateMqttSettings - ERROR request without the expected params");
         Serial.println(F("WEB:\t\t handleUpdateMqttSettings - ERROR without the expected params"));
-    }
-}
-
-// direct changes for the inverter
-void DTUwebserver::handleUpdatePowerLimit(AsyncWebServerRequest *request)
-{
-    if (request->hasParam("powerLimitSend", true))
-    {
-        String powerLimitSetNew = request->getParam("powerLimitSend", true)->value(); // retrieve message from webserver
-        Serial.println("WEB:\t\t handleUpdatePowerLimit - got powerLimitSend: " + powerLimitSetNew);
-        uint8_t gotLimit;
-        bool conversionSuccess = false;
-
-        if (powerLimitSetNew.length() > 0)
-        {
-            gotLimit = powerLimitSetNew.toInt();
-            // Check if the conversion was successful by comparing the string with its integer representation, to avoid wronmg interpretations of 0 after toInt by a "no number string"
-            conversionSuccess = (String(gotLimit) == powerLimitSetNew);
-        }
-
-        // if (conversionSuccess)
-        // {
-        //     if (gotLimit < 2)
-        //         dtuGlobalData.powerLimitSet = 2;
-        //     else if (gotLimit > 100)
-        //         dtuGlobalData.powerLimitSet = 2;
-        //     else
-        //         dtuGlobalData.powerLimitSet = gotLimit;
-
-        //     Serial.println("WEB:\t\t got SetLimit: " + String(dtuGlobalData.powerLimitSet) + " - current limit: " + String(dtuGlobalData.powerLimit) + " %");
-
-        //     String JSON = "{";
-        //     JSON = JSON + "\"PowerLimitSet\": \"" + dtuGlobalData.powerLimitSet + "\"";
-        //     JSON = JSON + "}";
-
-        //     request->send(200, "application/json", JSON);
-        //     Serial.println("WEB:\t\t handleUpdatePowerLimit - send JSON: " + String(JSON));
-        // }
-        // else
-        // {
-        //     Serial.println("WEB:\t\t got wrong data for SetLimit: " + powerLimitSetNew);
-        //     request->send(400, "text/plain", "powerLimit out of range");
-        //     return;
-        // }
-    }
-    else
-    {
-        request->send(400, "text/plain", "handleUpdatePowerLimit - ERROR requested without the expected params");
-        Serial.println(F("WEB:\t\t handleUpdatePowerLimit - ERROR without the expected params"));
     }
 }
 

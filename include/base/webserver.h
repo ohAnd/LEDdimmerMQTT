@@ -40,7 +40,7 @@ public:
 
     void setWifiScanIsRunning(bool state);
 
-    void setLEDdata(ledDimmerStruct ledDimmerDataIn);
+    void setLEDdata(ledDimmerStruct ledDimmerDataIn[5]);
 
 private:
     AsyncWebServer asyncDtuWebServer{80}; // Assuming port 80 for the web server
@@ -58,10 +58,12 @@ private:
     static void handleDataJson(AsyncWebServerRequest *request);
     static void handleInfojson(AsyncWebServerRequest *request);
 
+    static String ledStateToJSON(ledDimmerStruct ledDimmerData);
+    static String ledSettingsToJSON(ledDimmerStruct ledDimmerData);
+
     static void handleUpdateWifiSettings(AsyncWebServerRequest *request);
     static void handleUpdateLedSettings(AsyncWebServerRequest *request);
     static void handleUpdateMqttSettings(AsyncWebServerRequest *request);
-    static void handleUpdatePowerLimit(AsyncWebServerRequest *request);
     static void handleGetWifiNetworks(AsyncWebServerRequest *request);
 
     static void handleUpdateOTASettings(AsyncWebServerRequest *request);

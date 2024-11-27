@@ -9,6 +9,8 @@
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
 
+#include <base/platformData.h>
+
 // MQTT_CONNECTION_TIMEOUT (-4): The server didn't respond within the keep-alive time.
 // MQTT_CONNECTION_LOST (-3): The network connection was broken.
 // MQTT_CONNECT_FAILED (-2): The network connection failed.
@@ -25,17 +27,20 @@ struct LedDimmerSet {
     boolean setValueUpdate = false;
     boolean setSwitch = false;
     boolean setSwitchUpdate = false;
+    int8_t setdimValueStep = 0;
+    boolean setdimValueStepUpdate = false;
+    int8_t setdimValueStepDelay = 0;
+    boolean setdimValueStepDelayUpdate = false;
+    uint8_t ledPWMpin = 255;
 };
-
-
 
 class MQTTHandler {
 public:
     MQTTHandler(const char *broker, int port, const char *user, const char *password, bool useTLS);
-    void setup();
+    void setup(uint8_t ledPWMpin_0, uint8_t ledPWMpin_1, uint8_t ledPWMpin_2, uint8_t ledPWMpin_3, uint8_t ledPWMpin_4);
     void loop();
     void publishDiscoveryMessage(const char *entity, const char *entityReadableName, const char *unit, bool deleteMessage, const char *icon=NULL, const char *deviceClass=NULL, const char *commandEntity=NULL);
-    void publishStandardData(String entity, String value);
+    void publishStandardData(String subDevice, String entity, String value, String topicClass="light");
     
     // Setters for runtime configuration
     void setBroker(const char* broker);
@@ -50,7 +55,7 @@ public:
 
     void requestMQTTconnectionReset(boolean autoDiscoveryRemoveRequested);
 
-    LedDimmerSet getLedDimmerSet();
+    LedDimmerSet getLedDimmerSet(uint8_t ledNo);
     void stopConnection(boolean full=false);
 
     static void subscribedMessageArrived(char *topic, byte *payload, unsigned int length);
@@ -79,10 +84,13 @@ private:
     boolean requestMQTTconnectionResetFlag;
     unsigned long lastReconnectAttempt = 0;
 
-    LedDimmerSet lastDimmerSet;
+    // LedDimmerSet lastDimmerSet[LED_DIMMER_COUNT];
+    LedDimmerSet lastDimmerSet[5];
     
     void reconnect();
     boolean initiateDiscoveryMessages(bool autoDiscoveryRemove=false);
+    void subscribingLEDxLight(uint8_t ledNo);
+    void subscribingLEDxNumber(uint8_t ledNo);
 };
 
 extern MQTTHandler mqttHandler;

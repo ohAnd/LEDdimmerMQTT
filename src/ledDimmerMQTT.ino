@@ -13,8 +13,7 @@
 
 #include <WiFiUdp.h>
 #include <NTPClient.h>
-
-// #include <ArduinoJson.h>
+#include <UnixTime.h>
 
 #include <dimmerLed.h>
 
@@ -69,32 +68,27 @@ int wifiTimeoutLong = WIFI_RETRY_TIME_SECONDS;
 
 // <--- END initializing here and published over platformData.h
 
-// #if CONFIG_IDF_TARGET_ESP32C3
-//     #warning "Compiling for ESP32-C3"
-// #elif CONFIG_IDF_TARGET_ESP32S2
-//     #warning "Compiling for ESP32-S2"
-// #elif CONFIG_IDF_TARGET_ESP32S3
-//     #warning "Compiling for ESP32-S3"
-// #elif CONFIG_IDF_TARGET_ESP32
-//     #warning "Compiling for ESP32"
-// #else
-//   #error "Unrecognized ESP."
-// #endif
-
 // blink code for status display
-#if defined(ESP8266)
-// #define LED_BLINK LED_BUILTIN
+// defaults
 #define LED_BLINK 2
 #define LED_BLINK_ON LOW
 #define LED_BLINK_OFF HIGH
+
+#if defined(ESP8266)
 #warning "Compiling for ESP8266"
 #elif CONFIG_IDF_TARGET_ESP32
-#define LED_BLINK 2 // double occupancy with TFT display SPI DC pin
+#undef LED_BLINK
+#undef LED_BLINK_ON
+#undef LED_BLINK_OFF
+#define LED_BLINK 2
 #define LED_BLINK_ON HIGH
 #define LED_BLINK_OFF LOW
 #warning "Compiling for ESP32"
 #elif CONFIG_IDF_TARGET_ESP32S2
-#define LED_BLINK 15 // double occupancy with TFT display SPI DC pin
+#undef LED_BLINK
+#undef LED_BLINK_ON
+#undef LED_BLINK_OFF
+#define LED_BLINK 15
 #define LED_BLINK_ON HIGH
 #define LED_BLINK_OFF LOW
 #warning "Compiling for ESP32S2"
@@ -117,7 +111,7 @@ DTUwebserver dtuWebServer;
 
 MQTTHandler mqttHandler(userConfig.mqttBrokerIpDomain, userConfig.mqttBrokerPort, userConfig.mqttBrokerUser, userConfig.mqttBrokerPassword, userConfig.mqttUseTLS);
 
-DimmerLed dimmerLed_0;
+DimmerLed dimmerLedArray[LED_DIMMER_COUNT];
 
 boolean checkWifiTask()
 {
@@ -225,31 +219,53 @@ boolean scanNetworksResult()
   }
 }
 
-// mqtt client - publishing data in standard or HA mqtt auto discovery format
-void updateValuesToMqtt(boolean haAutoDiscovery = false)
+String getTimeStringByTimestamp(unsigned long timestamp)
 {
-  ledDimmerStruct currentDimValues = dimmerLed_0.getDimmerValues();
+  UnixTime stamp(1);
+  char buf[31];
+  stamp.getDateTime(timestamp - 3600);
+  // should have the format "2023-11-11T18:11:17+00:00"
+  snprintf(buf, sizeof(buf), "%04i-%02i-%02iT%02i:%02i:%02i%+03i:00", stamp.year, stamp.month, stamp.day, stamp.hour, stamp.minute, stamp.second, userConfig.timezoneOffest / 3600);
+  return String(buf);
+}
 
-  uint16_t maxTransitionTime = currentDimValues.dimValueStepDelay * currentDimValues.dimValueStep * (currentDimValues.dimValueRangeHigh - currentDimValues.dimValueRangeLow) + 500;
-
-  if (!currentDimValues.inTransition && (millis() - currentDimValues.dimValueStepTimer > maxTransitionTime))
-    return;
-
-  Serial.println("MQTT:\t\t publish data (HA autoDiscovery = " + String(haAutoDiscovery) + ")");
-  std::map<std::string, std::string> keyValueStore;
-  keyValueStore["timestamp"] = String(platformData.currentNTPtime).c_str();
-  // // grid
-  keyValueStore["led0_dimmer"] = String(currentDimValues.dimValue).c_str();
-  keyValueStore["led0_switch"] = currentDimValues.mainSwitch ? "ON" : "OFF";
-  // keyValueStore["led0_statePercent"] = String(currentDimValues.dimValueTarget).c_str();
-  keyValueStore["led0_rawValueStep"] = String(currentDimValues.dimValueStep).c_str();
-  keyValueStore["led0_rawValueStepDelay"] = String(currentDimValues.dimValueStepDelay).c_str();
-
-  // copy
-  for (const auto &pair : keyValueStore)
+void setConfigValuesToDimmer()
+{
+  for (size_t i = 0; i < LED_DIMMER_COUNT; i++)
   {
-    String entity = (pair.first).c_str();
-    mqttHandler.publishStandardData(entity, (pair.second).c_str());
+    dimmerLedArray[i].setConfigValues(userConfig.ledDimmerConfigs[i].dimValueStep, userConfig.ledDimmerConfigs[i].dimValueStepDelay, userConfig.ledDimmerConfigs[i].dimValueRangeLow, userConfig.ledDimmerConfigs[i].dimValueRangeHigh);
+  }
+}
+
+// mqtt client - publishing data in standard or HA mqtt auto discovery format
+void updateValuesToMqttLED(ledDimmerStruct currentDimValues, String subDevice, boolean doUpdate = false)
+{
+  uint16_t maxTransitionTime = currentDimValues.dimValueStepDelay * currentDimValues.dimValueStep * (currentDimValues.dimValueRangeHigh - currentDimValues.dimValueRangeLow) * 2.5;
+
+  // if there is no update to mqtt needed return
+  if (!currentDimValues.inTransition && (millis() - currentDimValues.dimTargetStartTimestamp > maxTransitionTime) && !doUpdate)
+    return;
+  // else if(subDevice == "led3")
+  //   Serial.println("MQTT:\t\t maxTransitionTime: " + String(maxTransitionTime) + " - currentDimValues.inTransition: " + String(currentDimValues.inTransition) + " - diff since change: " + String(millis() - currentDimValues.dimTargetStartTimestamp));
+
+  // Serial.println("MQTT:\t\t publish data");
+  // led data
+  mqttHandler.publishStandardData(subDevice, "dimmer", String(currentDimValues.dimValue).c_str());
+  mqttHandler.publishStandardData(subDevice, "switch", currentDimValues.mainSwitch ? "ON" : "OFF");
+  mqttHandler.publishStandardData(subDevice + "_dimValueStep", "", String(currentDimValues.dimValueStep).c_str(), "number");
+  mqttHandler.publishStandardData(subDevice + "_dimValueStepDelay", "", String(currentDimValues.dimValueStepDelay).c_str(), "number");
+  mqttHandler.publishStandardData(subDevice, "ledPWMpin", String(currentDimValues.ledPWMpin).c_str());
+  // main data
+  mqttHandler.publishStandardData("timestamp", "", getTimeStringByTimestamp(platformData.currentNTPtime).c_str(), "sensor");
+}
+
+void updateValuesToMqtt()
+{
+  for (int i = 0; i < LED_DIMMER_COUNT; i++)
+  {
+    ledDimmerStruct currentDimValues = dimmerLedArray[i].getDimmerValues();
+    if (currentDimValues.ledPWMpin != 255)
+      updateValuesToMqttLED(currentDimValues, "led" + String(i));
   }
 }
 
@@ -325,7 +341,12 @@ void setup()
     WiFi.mode(WIFI_STA);
   }
 
-  dimmerLed_0.setup(userConfig.dimValueStep, userConfig.dimValueStepDelay);
+  for (int i = 0; i < LED_DIMMER_COUNT; i++)
+  {
+    dimmerLedArray[i].setup(userConfig.ledDimmerConfigs[i].ledPWMpin);
+  }
+
+  setConfigValuesToDimmer();
 
   // delay for startup background tasks in ESP
   delay(2000);
@@ -358,7 +379,7 @@ void startServices()
     dtuWebServer.start();
 
     mqttHandler.setConfiguration(userConfig.mqttBrokerIpDomain, userConfig.mqttBrokerPort, userConfig.mqttBrokerUser, userConfig.mqttBrokerPassword, userConfig.mqttUseTLS, (platformData.espUniqueName).c_str(), userConfig.mqttBrokerMainTopic, userConfig.mqttHAautoDiscoveryON, ((platformData.dtuGatewayIP).toString()).c_str());
-    mqttHandler.setup();
+    mqttHandler.setup(userConfig.ledDimmerConfigs[0].ledPWMpin, userConfig.ledDimmerConfigs[1].ledPWMpin, userConfig.ledDimmerConfigs[2].ledPWMpin, userConfig.ledDimmerConfigs[3].ledPWMpin, userConfig.ledDimmerConfigs[4].ledPWMpin);
   }
   else
   {
@@ -542,7 +563,10 @@ void loop()
   {
     previousMillis1ms = currentMillis;
     // -------->
-    dimmerLed_0.loop();
+    for (int i = 0; i < LED_DIMMER_COUNT; i++)
+    {
+      dimmerLedArray[i].loop();
+    }
   }
 
   // 10ms task
@@ -566,38 +590,63 @@ void loop()
     // -------->
     // led blink code only 5 min after startup
     if ((platformData.currentNTPtime - platformData.dtuGWstarttime) < 300)
-    {
       blinkCodeTask();
-    }
-
     serialInputTask();
+    // get current LED values
+    ledDimmerStruct currentDimValues[5];
+    for (int i = 0; i < LED_DIMMER_COUNT; i++)
+      currentDimValues[i] = dimmerLedArray[i].getDimmerValues();
+
+    // transfer data to webserver
+    dtuWebServer.setLEDdata(currentDimValues);
 
     if (userConfig.mqttActive)
     {
-      // getting powerlimitSet over MQTT, only on demand
-      LedDimmerSet lastSetting = mqttHandler.getLedDimmerSet();
-      ledDimmerStruct currentDimValues = dimmerLed_0.getDimmerValues();
-      // transfer data to webserver
-      dtuWebServer.setLEDdata(currentDimValues);
-
-      if (lastSetting.setValueUpdate == true)
+      // getting dimTargetValue over MQTT, only on demand
+      for (int i = 0; i < LED_DIMMER_COUNT; i++)
       {
-        Serial.println("\nMQTT: changed led dimmer value to '" + String(lastSetting.setValue) + "'");
-        dimmerLed_0.setDimValue(lastSetting.setValue, userConfig.dimValueStep, userConfig.dimValueStepDelay);
-      }
-      if (lastSetting.setSwitchUpdate == true)
-      {
-        //   dtuGlobalData.powerLimitSet = lastSetting.setValue;
-        Serial.println("\nMQTT: changed led switch to '" + String(lastSetting.setSwitch) + "'");
-        if (lastSetting.setSwitch && currentDimValues.dimValueTarget == 0)
-          lastSetting.setValue = 100;
-        else if (!lastSetting.setSwitch && currentDimValues.dimValueTarget > 0)
-          lastSetting.setValue = 0;
+        LedDimmerSet lastSetting = mqttHandler.getLedDimmerSet(i);
+        bool gotChanges = false;
 
-        dimmerLed_0.setDimValue(lastSetting.setValue, userConfig.dimValueStep, userConfig.dimValueStepDelay);
+        if (lastSetting.setValueUpdate)
+        {
+          Serial.println("MQTT-LED: changed led " + String(i) + " dimmer value to '" + String(lastSetting.setValue) + "'");
+          dimmerLedArray[i].setDimValue(lastSetting.setValue);
+          gotChanges = true;
+        }
+        if (lastSetting.setSwitchUpdate)
+        {
+          Serial.println("MQTT_LED: changed led " + String(i) + " switch to '" + String(lastSetting.setSwitch) + "'");
+          if (lastSetting.setSwitch && currentDimValues[i].dimValueTarget == 0)
+            lastSetting.setValue = 100;
+          else if (!lastSetting.setSwitch && currentDimValues[i].dimValueTarget > 0)
+            lastSetting.setValue = 0;
+
+          dimmerLedArray[i].setDimValue(lastSetting.setValue);
+          gotChanges = true;
+        }
+        if (lastSetting.setdimValueStepUpdate)
+        {
+          Serial.println("MQTT_LED: changed led " + String(i) + " dimValueStep to '" + String(lastSetting.setdimValueStep) + "'");
+          userConfig.ledDimmerConfigs[i].dimValueStep = lastSetting.setdimValueStep;
+          gotChanges = true;
+        }
+        if (lastSetting.setdimValueStepDelayUpdate)
+        {
+          Serial.println("MQTT_LED: changed led " + String(i) + " dimValueStepDelay to '" + String(lastSetting.setdimValueStepDelay) + "'");
+          userConfig.ledDimmerConfigs[i].dimValueStepDelay = lastSetting.setdimValueStepDelay;
+          gotChanges = true;
+        }
+        if (gotChanges)
+        {
+          setConfigValuesToDimmer();
+          ledDimmerStruct currentDimValues = dimmerLedArray[i].getDimmerValues();
+          if (currentDimValues.ledPWMpin != 255)
+            updateValuesToMqttLED(currentDimValues, "led" + String(i), true);
+        }
       }
 
-      updateValuesToMqtt(userConfig.mqttHAautoDiscoveryON);
+      updateValuesToMqtt();
     }
 
     platformData.currentNTPtime = timeClient.getEpochTime() < (12 * 60 * 60) ? (12 * 60 * 60) : timeClient.getEpochTime();
@@ -637,21 +686,46 @@ void loop()
     // {
     //   getUpdateInfo();
     // }
+
+    // update dimmer values from user config
+    setConfigValuesToDimmer();
   }
 
   // 5s task
   if (currentMillis - previousMillis5000ms >= interval5000ms)
   {
     Serial.printf(">>>>> %02is task - state --> ", int(interval5000ms));
-    // Serial.print("local: " + dtuInterface.getTimeStringByTimestamp(dtuGlobalData.currentTimestamp));
-    if(userConfig.wifiAPstart)
+    if (userConfig.wifiAPstart)
       Serial.print(" --- in AP mode for first config --- ");
-    ledDimmerStruct currentDimValues = dimmerLed_0.getDimmerValues();
-    Serial.println(" --- NTP: " + timeClient.getFormattedTime() + " - dimValueState: " + currentDimValues.dimValue + " target: " + currentDimValues.dimValueTarget);
+    Serial.print(" --- NTP: " + timeClient.getFormattedTime() + " - " + getTimeStringByTimestamp(platformData.currentNTPtime) + " --- " + String(platformData.currentNTPtime));
+
+    // get current LED values
+    ledDimmerStruct currentDimValues[5];
+    for (int i = 0; i < LED_DIMMER_COUNT; i++)
+      currentDimValues[i] = dimmerLedArray[i].getDimmerValues();
+
+    Serial.print(" - [pin] dim | tgt => ");
+    for (int i = 0; i < LED_DIMMER_COUNT; i++)
+    {
+      if (currentDimValues[i].ledPWMpin != 255)
+      {
+        char formattedDimValue[4];
+        sprintf(formattedDimValue, "%3d", currentDimValues[i].dimValue);
+        char formattedTargetValue[4];
+        sprintf(formattedTargetValue, "%3d", currentDimValues[i].dimValueTarget);
+
+        Serial.print("  [" + String(currentDimValues[i].ledPWMpin) + "] " + String(formattedDimValue) + " | " + String(formattedTargetValue) + " | " + String(currentDimValues[i].mainSwitch ? " ON" : "OFF"));
+      }
+    }
+    Serial.println("");
 
     previousMillis5000ms = currentMillis;
     // -------->
     // dimmerLed_0.setDimValue(dimTargetValues[dimCounter]);
+    // dimmerLed_1.setDimValue(dimTargetValues[dimCounter]);
+    // dimmerLed_2.setDimValue(dimTargetValues[dimCounter]);
+    // dimmerLed_3.setDimValue(dimTargetValues[dimCounter]);
+    // dimmerLed_4.setDimValue(dimTargetValues[dimCounter]);
 
     // dimCounter++;
     // if (dimCounter > 10)
@@ -675,8 +749,8 @@ void loop()
   if (currentMillis - previousMillis30000ms >= interval30000ms)
   {
     Serial.printf(">>>>> %02is task - state --> ", int(interval30000ms));
-    // Serial.print("local: " + dtuInterface.getTimeStringByTimestamp(dtuGlobalData.currentTimestamp));
-    Serial.println(" --- NTP: " + timeClient.getFormattedTime() + "\n");
+    // Serial.print("local: " + getTimeStringByTimestamp(dtuGlobalData.currentTimestamp));
+    Serial.println(" --- NTP: " + timeClient.getFormattedTime());
 
     previousMillis30000ms = currentMillis;
     // -------->

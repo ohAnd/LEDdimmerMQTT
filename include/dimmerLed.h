@@ -14,13 +14,14 @@ struct ledDimmerStruct {
     uint8_t dimValueTarget = 0;             // in percent 0-100
     uint8_t dimValueStep = 1;               // in percent 0-100
     uint8_t dimValueStepDelay = 3;          // in ms
-    unsigned long dimValueStepTimer = 0;    // in ms
+    unsigned long dimTargetStartTimestamp = 0;    // in ms
     unsigned long dimValueStepTimerOld = 0; // in ms
     
     boolean inTransition = false;
 
     uint16_t dimValueRangeLow = 0;           // 0-1023
     uint16_t dimValueRangeHigh = 1023;       // 0-1023
+    uint8_t ledPWMpin = 255;                 // init with invalid value
 };
 #endif
 
@@ -28,8 +29,9 @@ struct ledDimmerStruct {
 class DimmerLed {
     public:
         DimmerLed();
-        void setup(uint8_t dimValueStep, uint8_t dimValueStepDelay);
-        void setDimValue(uint8_t dimValue, uint8_t dimValueStep = 1, uint8_t dimValueStepDelay = 3);
+        void setup(uint8_t ledPWMpin);
+        void setDimValue(uint8_t dimValue);
+        void setConfigValues(uint8_t dimValueStep, uint8_t dimValueStepDelay, uint16_t dimValueRangeLow, uint16_t dimValueRangeHigh);
         uint8_t getDimValue();
         ledDimmerStruct getDimmerValues();
         void loop();

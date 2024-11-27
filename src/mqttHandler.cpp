@@ -23,53 +23,100 @@ MQTTHandler::MQTTHandler(const char *broker, int port, const char *user, const c
 
 void MQTTHandler::subscribedMessageArrived(char *topic, byte *payload, unsigned int length)
 {
+    String incommingTopic = String(topic);
     String incommingMessage = "#"; // fix initial char to avoid empty string
     for (uint8_t i = 0; i < length; i++)
         incommingMessage += (char)payload[i];
 
-    // Serial.println("MQTT: Message arrived [" + String(topic) + "] -> '" + incommingMessage + "'");
+    // Serial.println("MQTT: Message arrived [" + String(incommingTopic) + "] -> '" + incommingMessage + "'");
     if (instance != nullptr)
     {
         incommingMessage = incommingMessage.substring(1, length + 1); //'#' has to be ignored
-        if (String(topic) == "homeassistant/light/" + instance->mqttMainTopicPath + "/led0/dimmer/set")
-        // if (String(topic) == instance->mqttMainTopicPath + "/led0/targetPercent")
+        // filter message to check if it contains "homeassistant/light/" + instance->mqttMainTopicPath + "/led"
+        if (incommingTopic.indexOf("homeassistant/light/" + instance->mqttMainTopicPath + "/led") >= 0 || incommingTopic.indexOf("homeassistant/number/" + instance->mqttMainTopicPath + "/led") >= 0)
         {
+            // Serial.println("MQTT: recognized Message arrived [" + incommingTopic + "] -> '" + incommingMessage + "'");
+            // get the led number for dimmer or for switch
+            int ledNo = incommingTopic.substring(incommingTopic.indexOf("led") + 3, incommingTopic.indexOf("/", incommingTopic.indexOf("led") + 3)).toInt();
+            // Serial.println("MQTT: cleaned incoming message: '" + incommingMessage + "' got ledNo: " + String(ledNo));
 
-            int gotTarget = (incommingMessage).toInt();
-            uint8_t setTarget = 0;
-            if (gotTarget >= 0 && gotTarget <= 100)
-                setTarget = gotTarget;
-            else if (gotTarget > 100)
-                setTarget = 100;
-            else if (gotTarget < 0)
-                setTarget = 0;
-            Serial.println("MQTT: cleaned incoming message: '" + incommingMessage + "' (len: " + String(length) + ") + got targetPercent: " + String(gotTarget) + " -> new setTarget: " + String(setTarget));
-            instance->lastDimmerSet.setValue = setTarget;
-            instance->lastDimmerSet.setValueUpdate = true;
+            // get the command for dimmer or for switch
+            if (incommingTopic == "homeassistant/light/" + instance->mqttMainTopicPath + "/led" + String(ledNo) + "/dimmer/set")
+            {
+                int gotTarget = (incommingMessage).toInt();
+                uint8_t setTarget = 0;
+                if (gotTarget >= 0 && gotTarget <= 100)
+                    setTarget = gotTarget;
+                else if (gotTarget > 100)
+                    setTarget = 100;
+                else if (gotTarget < 0)
+                    setTarget = 0;
+                Serial.println("MQTT: led number: " + String(ledNo) + " got targetPercent: " + String(gotTarget) + " -> new setTarget: " + String(setTarget));
+                instance->lastDimmerSet[ledNo].setValue = setTarget;
+                instance->lastDimmerSet[ledNo].setValueUpdate = true;
+            }
+            else if (incommingTopic == "homeassistant/light/" + instance->mqttMainTopicPath + "/led" + String(ledNo) + "/switch/set")
+            {
+                if (incommingMessage == "ON")
+                    instance->lastDimmerSet[ledNo].setSwitch = true;
+                else if (incommingMessage == "OFF")
+                    instance->lastDimmerSet[ledNo].setSwitch = false;
+                Serial.println("MQTT: led number: " + String(ledNo) + " got switchSet: " + incommingMessage + " -> new setTarget: " + String(instance->lastDimmerSet[ledNo].setSwitch));
+                instance->lastDimmerSet[ledNo].setSwitchUpdate = true;
+            }
+            else if (incommingTopic == "homeassistant/number/" + instance->mqttMainTopicPath + "/led" + String(ledNo) + "_dimValueStep/set")
+            {
+                int gotTarget = (incommingMessage).toInt();
+                uint8_t setTarget = 0;
+                if (gotTarget >= 0 && gotTarget <= 100)
+                    setTarget = gotTarget;
+                else if (gotTarget > 100)
+                    setTarget = 100;
+                else if (gotTarget < 0)
+                    setTarget = 0;
+                Serial.println("MQTT: led number: " + String(ledNo) + " got dimValueStep: " + String(gotTarget) + " -> new setTarget: " + String(setTarget));
+                instance->lastDimmerSet[ledNo].setdimValueStep = setTarget;
+                instance->lastDimmerSet[ledNo].setdimValueStepUpdate = true;
+            }
+            else if (incommingTopic == "homeassistant/number/" + instance->mqttMainTopicPath + "/led" + String(ledNo) + "_dimValueStepDelay/set")
+            {
+                int gotTarget = (incommingMessage).toInt();
+                uint8_t setTarget = 0;
+                if (gotTarget >= 0 && gotTarget <= 100)
+                    setTarget = gotTarget;
+                else if (gotTarget > 100)
+                    setTarget = 100;
+                else if (gotTarget < 0)
+                    setTarget = 0;
+                Serial.println("MQTT: led number: " + String(ledNo) + " got dimValueStepDelay: " + String(gotTarget) + " -> new setTarget: " + String(setTarget));
+                instance->lastDimmerSet[ledNo].setdimValueStepDelay = setTarget;
+                instance->lastDimmerSet[ledNo].setdimValueStepDelayUpdate = true;
+            }
         }
-        else if (String(topic) == "homeassistant/light/" + instance->mqttMainTopicPath + "/led0/switch/set")
-        // else if (String(topic) == instance->mqttMainTopicPath + "/led0/switch/set")
+        else
         {
-            if(incommingMessage == "ON")
-                instance->lastDimmerSet.setSwitch = true;
-            else if(incommingMessage == "OFF")
-                instance->lastDimmerSet.setSwitch = false;
-            Serial.println("MQTT: cleaned incoming message: '" + incommingMessage + "' (len: " + String(length) + ") + got switchSet: " + incommingMessage + " -> new setTarget: " + String(instance->lastDimmerSet.setValue));
-            instance->lastDimmerSet.setSwitchUpdate = true;
+            Serial.println("MQTT: NOT RECOGNIZED Message arrived [" + incommingTopic + "] -> '" + incommingMessage + "'");
         }
     }
 }
 
-LedDimmerSet MQTTHandler::getLedDimmerSet()
+LedDimmerSet MQTTHandler::getLedDimmerSet(uint8_t ledNo)
 {
-    LedDimmerSet lastSetting = lastDimmerSet;
-    lastDimmerSet.setValueUpdate = false;
-    lastDimmerSet.setSwitchUpdate = false;
+    LedDimmerSet lastSetting = lastDimmerSet[ledNo];
+    lastDimmerSet[ledNo].setValueUpdate = false;
+    lastDimmerSet[ledNo].setSwitchUpdate = false;
+    lastDimmerSet[ledNo].setdimValueStepUpdate = false;
+    lastDimmerSet[ledNo].setdimValueStepDelayUpdate = false;
     return lastSetting;
 }
 
-void MQTTHandler::setup()
+void MQTTHandler::setup(uint8_t ledPWMpin_0, uint8_t ledPWMpin_1, uint8_t ledPWMpin_2, uint8_t ledPWMpin_3, uint8_t ledPWMpin_4)
 {
+    lastDimmerSet[0].ledPWMpin = ledPWMpin_0;
+    lastDimmerSet[1].ledPWMpin = ledPWMpin_1;
+    lastDimmerSet[2].ledPWMpin = ledPWMpin_2;
+    lastDimmerSet[3].ledPWMpin = ledPWMpin_3;
+    lastDimmerSet[4].ledPWMpin = ledPWMpin_4;
     Serial.println("MQTT:\t\t setup callback for subscribed messages");
     client.setCallback(subscribedMessageArrived);
     requestMQTTconnectionResetFlag = true;
@@ -101,35 +148,47 @@ void MQTTHandler::publishDiscoveryMessage(const char *entity, const char *entity
     String entityName = String(entity).substring(String(entity).indexOf("_") + 1);
     String commandEntityName = String(commandEntity).substring(String(commandEntity).indexOf("_") + 1);
 
-    String configTopicPath = "homeassistant/light/" + String(deviceGroupName) + "/" + String(entity) + "/config";
+    String categoryName = "sensor";
+    String configTopicPath = "homeassistant/" + categoryName + "/" + String(deviceGroupName) + "/" + String(entity) + "/config";
     // Create the state topic path for the entity e.g. "LEDdimmerMQTT_12345678/grid/U"
-    String stateTopicPath = "homeassistant/light/" + String(deviceGroupName) + "/" + String(entity) + "/state";
+    String stateTopicPath = "homeassistant/" + categoryName + "/" + String(deviceGroupName) + "/" + String(entity) + "/state";
     if (String(deviceGroupName) != mqttMainTopicPath)
         stateTopicPath = String(mqttMainTopicPath) + "/" + entityGroup + "/" + entityName;
     // Create the command topic path for the entity e.g. "LEDdimmerMQTT_12345678/grid/U"
-    String commandTopicPath = "homeassistant/light/" + String(deviceGroupName) + "/" + String(commandEntity) + "/set";
+    String commandTopicPath = "homeassistant/" + categoryName + "/" + String(deviceGroupName) + "/" + String(commandEntity) + "/set";
     if (String(deviceGroupName) != mqttMainTopicPath)
         commandTopicPath = String(mqttMainTopicPath) + "/" + entityGroup + "/" + commandEntityName;
+
+    Serial.println("MQTT:\t\t HA auto discovery for entity: " + String(entity) + " - stateTopic: " + stateTopicPath + " - commandTopic: " + commandTopicPath);
 
     JsonDocument doc;
     doc["name"] = String(entityReadableName);
 
     if (deviceClass != NULL && String(deviceClass) == "brightness")
     {
+        configTopicPath = "homeassistant/light/" + String(deviceGroupName) + "/" + String(entity) + "/config";
         doc["state_topic"] = "homeassistant/light/" + String(mqttMainTopicPath) + "/" + entityGroup + "/switch/state";
         doc["command_topic"] = "homeassistant/light/" + String(mqttMainTopicPath) + "/" + entityGroup + "/switch/set";
-        // doc["state_topic"] = stateTopicPath;
-        // doc["command_topic"] = commandTopicPath;
         doc["brightness_state_topic"] = "homeassistant/light/" + String(mqttMainTopicPath) + "/" + entityGroup + "/" + String(commandEntity) + "/state";
         doc["brightness_command_topic"] = "homeassistant/light/" + String(mqttMainTopicPath) + "/" + entityGroup + "/" + String(commandEntity) + "/set";
         doc["brightness_scale"] = 100;
-        // doc["brightness"] = true;
-        // doc["supported_color_modes"] = "[\"brightness\"]";
         doc["payload_on"] = "ON";
         doc["payload_off"] = "OFF";
-        // doc["on_command_type"] = "brightness";
-        // doc["off_command_type"] = "brightness";
         doc["device_class"] = "light";
+    }
+    else if (deviceClass != NULL && String(deviceClass) == "number")
+    {
+        uniqueID = uniqueID + "_" + commandEntity;
+        configTopicPath = "homeassistant/number/" + String(deviceGroupName) + "/" + entityGroup + "_" + String(commandEntity) + "/config";
+        doc["state_topic"] = "homeassistant/number/" + String(mqttMainTopicPath) + "/" + entityGroup + "_" + String(commandEntity) + "/state";
+        doc["command_topic"] = "homeassistant/number/" + String(mqttMainTopicPath) + "/" + entityGroup + "_" + String(commandEntity) + "/set";
+        doc["mode"] = "box";
+        doc["min"] = 1;
+        if (String(commandEntity) == "dimValueStep")
+            doc["max"] = 50;
+        else
+            doc["max"] = 99;
+        doc["entity_category"] = "diagnostic";
     }
     else if (deviceClass != NULL)
     {
@@ -139,8 +198,9 @@ void MQTTHandler::publishDiscoveryMessage(const char *entity, const char *entity
             doc["command_topic"] = commandTopicPath;
         }
         doc["device_class"] = deviceClass;
-        if (String(deviceClass) == "timestamp")
-            doc["value_template"] = "{{ as_datetime(value) }}";
+        // if (String(deviceClass) == "timestamp")
+            // doc["value_template"] = "{{ as_datetime(value) }}";
+        doc["entity_category"] = "diagnostic";
     }
 
     if (unit != NULL)
@@ -154,7 +214,7 @@ void MQTTHandler::publishDiscoveryMessage(const char *entity, const char *entity
     doc["device"]["identifiers"] = deviceGroupName;
     doc["device"]["manufacturer"] = "ohAnd";
     doc["device"]["model"] = "LEDdimmerMQTT ESP8266/ESP32";
-    doc["device"]["hw_version"] = "1.0";
+    doc["device"]["hw_version"] = "1.0 (" + platformData.chipType + ")";
     doc["device"]["sw_version"] = String(VERSION);
     // doc["device"]["configuration_url"] = "http://" + String(deviceGroupName);
     doc["device"]["configuration_url"] = "http://" + gw_ipAddress;
@@ -171,16 +231,15 @@ void MQTTHandler::publishDiscoveryMessage(const char *entity, const char *entity
     }
     else
     {
-        client.publish(configTopicPath.c_str(), NULL, false); // delete message without retain
+        client.publish(configTopicPath.c_str(), NULL, true); // delete message with retain
     }
 }
 
-void MQTTHandler::publishStandardData(String entity, String value)
+void MQTTHandler::publishStandardData(String subDevice, String entity, String value, String topicClass)
 {
-    entity.replace("_", "/");
-    String stateTopicPath = "homeassistant/light/" + String(deviceGroupName) + "/" + String(entity) + "/state";
-    // if (String(deviceGroupName) != mqttMainTopicPath || !autoDiscoveryActive)
-    //     stateTopicPath = String(mqttMainTopicPath) + "/" + entity;
+    if (entity != "")
+        subDevice = subDevice + "/" + entity;
+    String stateTopicPath = "homeassistant/" + topicClass + "/" + String(deviceGroupName) + "/" + String(subDevice) + "/state";
 
     client.publish(stateTopicPath.c_str(), value.c_str(), true);
 }
@@ -197,12 +256,16 @@ boolean MQTTHandler::initiateDiscoveryMessages(bool autoDiscoveryRemove)
                 Serial.println("MQTT:\t\t removing devices for HA auto discovery");
 
             // Publish MQTT auto-discovery messages
-
-            publishDiscoveryMessage("led0", "dimming LED 0", NULL, autoDiscoveryRemove, NULL, "brightness", "dimmer");
-            // publishDiscoveryMessage("led0_rawValueStep", "animation steps", " ", autoDiscoveryRemove, NULL, NULL);
-            // publishDiscoveryMessage("led0_rawValueStepDelay", "animation delay in ms", "%", autoDiscoveryRemove, NULL, NULL);
-
-            // publishDiscoveryMessage("timestamp", "Time stamp", NULL, autoDiscoveryRemove, NULL, "timestamp");
+            for (uint8_t i = 0; i < 5; i++)
+            {
+                if (lastDimmerSet[i].ledPWMpin != 255 && lastDimmerSet[i].ledPWMpin != 0)
+                {
+                    publishDiscoveryMessage(("led" + String(i)).c_str(), ("LED " + String(i) + " dimming").c_str(), NULL, autoDiscoveryRemove, NULL, "brightness", "dimmer");
+                    publishDiscoveryMessage(("led" + String(i)).c_str(), ("LED " + String(i) + " step").c_str(), NULL, autoDiscoveryRemove, "mdi:step-forward", "number", "dimValueStep");
+                    publishDiscoveryMessage(("led" + String(i)).c_str(), ("LED " + String(i) + " step delay (ms)").c_str(), NULL, autoDiscoveryRemove, "mdi:sort-clock-descending-outline", "number", "dimValueStepDelay");
+                }
+            }
+            publishDiscoveryMessage("timestamp", "Timestamp", NULL, autoDiscoveryRemove, "mdi:clock-time-eight-outline","timestamp");
             return true;
         }
         else
@@ -218,6 +281,26 @@ boolean MQTTHandler::initiateDiscoveryMessages(bool autoDiscoveryRemove)
     }
 }
 
+void MQTTHandler::subscribingLEDxLight(uint8_t ledNo)
+{
+    String topic = "homeassistant/light/" + instance->mqttMainTopicPath + "/led" + String(ledNo) + "/dimmer/set";
+    client.subscribe(topic.c_str());
+    Serial.print("MQTT:\t\t subscribe to: " + topic);
+    topic = "homeassistant/light/" + instance->mqttMainTopicPath + "/led" + String(ledNo) + "/switch/set";
+    client.subscribe(topic.c_str());
+    Serial.println(" and: " + topic);
+}
+
+void MQTTHandler::subscribingLEDxNumber(uint8_t ledNo)
+{
+    String topic = "homeassistant/number/" + instance->mqttMainTopicPath + "/led" + String(ledNo) + "_dimValueStep/set";
+    client.subscribe(topic.c_str());
+    Serial.print("MQTT:\t\t subscribe to: " + topic);
+    topic = "homeassistant/number/" + instance->mqttMainTopicPath + "/led" + String(ledNo) + "_dimValueStepDelay/set";
+    client.subscribe(topic.c_str());
+    Serial.println(" and: " + topic);
+}
+
 void MQTTHandler::reconnect()
 {
     if (!client.connected() && (millis() - lastReconnectAttempt > 5000))
@@ -227,10 +310,14 @@ void MQTTHandler::reconnect()
         {
             Serial.println("\nMQTT:\t\t Attempting connection is now connected");
 
-            client.subscribe(("homeassistant/light/" + instance->mqttMainTopicPath + "/led0/dimmer/set").c_str());
-            Serial.println("MQTT:\t\t subscribe to: " + ("homeassistant/light/" + instance->mqttMainTopicPath + "/led0/dimmer/set"));
-            client.subscribe(("homeassistant/light/" + instance->mqttMainTopicPath + "/led0/switch/set").c_str());
-            Serial.println("MQTT:\t\t subscribe to: " + ("homeassistant/light/" + instance->mqttMainTopicPath + "/led0/switch/set"));
+            for (uint8_t i = 0; i < 5; i++)
+            {
+                if (lastDimmerSet[i].ledPWMpin != 255 && lastDimmerSet[i].ledPWMpin != 0 )
+                {
+                    subscribingLEDxLight(i);
+                    subscribingLEDxNumber(i);
+                }
+            }
         }
         else
         {

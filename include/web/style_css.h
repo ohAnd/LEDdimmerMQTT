@@ -1,6 +1,5 @@
 const char STYLE_CSS[] PROGMEM = R"=====(
 
-
 :root {
     --primary-color: #08eb2e;
     --background-color: #011f0a;
@@ -79,7 +78,8 @@ hr {
 /* Create three equal columns that floats next to each other */
 .column {
     float: left;
-    width: 49.5%;
+    /* width: 49.5%; */
+    width: 33%;
     height: 49.6%;
     padding: 1%;
 
@@ -102,7 +102,7 @@ hr {
     float: left;
     font-size: 7.5vmin;
     width: 100%;
-    padding-bottom: 5%;
+    padding-bottom: 1%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -139,6 +139,7 @@ hr {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: medium;
 }
 
 .panelHead {

@@ -1,4 +1,5 @@
 const char INDEX_HTML[] PROGMEM = R"=====(
+
 <html lang="de">
 
 </html>
@@ -112,19 +113,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         </div>
         <div class="popupContent" id="LED-settings">
             <div id="ledSettings">
-                <div>
-                    animation settings - step width (0 ... 25):
-                </div>
-                <div>
-                    <input type="number" id="dimValueStep" name="ipv4" min="0" max="25" step="1">
-                </div>
-                <hr>
-                <div>
-                    animation settings - delay in ms per step (0 ... 50):
-                </div>
-                <div>
-                    <input type="number" id="dimValueStepDelay" min="1" max="50" step="1">
-                </div>
+                <!-- will be generated -->
             </div>
             <hr>
             <div style="text-align: center;">
@@ -226,7 +215,6 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             <b onclick="hide('#updateMenu')" class="form-button btn">close</b>
         </div>
     </div>
-    </div>
     <div class="popup" id="updateProgress">
         <h2>Update</h2>
         <hr>
@@ -248,39 +236,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             <b id="titleHeader">LED Dimmer MQTT</b>
         </div>
         <div class="row">
-            <div class="column">
-                <div>
-                    LED dimming state
-                </div>
-                <div class="panelValueBox">
-                    <b id="led_dimValue" class="panelValue valueText">-- %</b>
-                    <div class="panelValueBoxDetail">
-                        <small>target value</small>
-                        <b id="led_dimValueTarget" class="panelValueSmall valueText">0</b>
-                    </div>
-                    <div class="panelValueBoxDetail">
-                        <small>ani delay</small>
-                        <b id="led_dimValueStepDelay" class="panelValueSmall valueText">-</b>
-                    </div>
-                    <div class="panelValueBoxDetail">
-                        <small>raw value</small>
-                        <b id="led_dimValueRaw" class="panelValueSmall valueText">0</b>
-                    </div>
-                    <div class="panelValueBoxDetail">
-                        <small>ani step</small>
-                        <b id="led_dimValueStep" class="panelValueSmall valueText">-</b>
-                    </div>
-                </div>
-            </div>
-
-            <div class="column">
-                <div>
-                    LED dimmer
-                </div>
-                <div class="panelValueBox">
-                    <b id="led_slider" class="panelValue valueText">SLIDER</b>
-                </div>
-
+            <div id="leds">
+                <!-- will be generated  -->
             </div>
 
             <div class="column" id="time">
@@ -443,16 +400,69 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             $('#gwtime_small').html(getTime(data.localtime));
             $('#gwNTPtime').html(getTime(data.ntpStamp));
 
-            checkValueUpdate('#led_dimValue', data.led_0.dimValue, "%");
-            checkValueUpdate('#led_dimValueRaw', data.led_0.dimValueRaw, "");
-            checkValueUpdate('#led_dimValueStepDelay', data.led_0.dimValueStepDelay, "ms");
-            checkValueUpdate('#led_dimValueStep', data.led_0.dimValueStep, "");
-
-            checkValueUpdate('#led_dimValueTarget', data.led_0.dimValueTarget, "%");
-            checkValueUpdate('#led_dimValueRaw', data.led_0.dimValueRaw, "");
-
-
             $('#gwStartTime').html(getTime(data.starttime, "dateShort") + "&nbsp;" + getTime(data.starttime, "timeShort"));
+
+            // creating led windows according to the number of leds
+            for (let index = 0; index < data.leds.length; index++) {
+                ledElement = `
+                <div class="column" id="led_%led%">
+                    <div>
+                        LED %led% dimming state
+                    </div>
+                    <div class="panelValueBox">
+                        <b id="led_dimValue_%led%" class="panelValue valueText">-- %</b>
+                        <div class="panelValueBoxDetail">
+                            <small>target value</small>
+                            <b id="led_dimValueTarget_%led%" class="panelValueSmall valueText">0</b>
+                        </div>
+                        <div class="panelValueBoxDetail">
+                            <small>ani delay</small>
+                            <b id="led_dimValueStepDelay_%led%" class="panelValueSmall valueText">-</b>
+                        </div>
+                        <div class="panelValueBoxDetail">
+                            <small>raw value</small>
+                            <b id="led_dimValueRaw_%led%" class="panelValueSmall valueText">0</b>
+                        </div>
+                        <div class="panelValueBoxDetail">
+                            <small>ani step</small>
+                            <b id="led_dimValueStep_%led%" class="panelValueSmall valueText">-</b>
+                        </div>
+                    </div>
+                </div>
+                `;
+                ledElement = ledElement.replace(/%led%/g, index);
+                if ($('#led_' + index).length == 0) {
+                    $('#leds').append(ledElement);
+                }
+                
+                checkValueUpdate('#led_dimValue_' + index, data.leds[index].dimValue, "%");
+                checkValueUpdate('#led_dimValueRaw_' + index, data.leds[index].dimValueRaw, "");
+                checkValueUpdate('#led_dimValueStepDelay_' + index, data.leds[index].dimValueStepDelay, "ms");
+                checkValueUpdate('#led_dimValueStep_' + index, data.leds[index].dimValueStep, "");
+    
+                checkValueUpdate('#led_dimValueTarget_' + index, data.leds[index].dimValueTarget, "%");
+                checkValueUpdate('#led_dimValueRaw_' + index, data.leds[index].dimValueRaw, "");
+            }
+
+            // check the count of elements with .column and if 4 set width to 49.5% else 32%
+            if ($('.column').length > 6)
+                $('#time').hide();
+
+            if ($('.column').length == 3) {
+                $('.column').css('width', '49.5%');
+                // get the first element of column and set width to 100%
+                $('.column').first().css('width', '99.4%');                                
+            } else if ($('.column').length == 4) {
+                $('.column').css('width', '49.5%');
+            }
+            else if ($('.column').length == 5) {
+                $('.column').css('width', '32.9%');
+                // set the last 2 columns to 49.5%
+                $('.column').slice(-2).css('width', '49.5%');
+            } else {
+                $('.column').css('width', '32.9%');
+            }
+
 
             return true;
         }
@@ -537,11 +547,37 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             $('#btnSaveDtuSettings').css('opacity', '1.0');
             $('#btnSaveDtuSettings').attr('onclick', "changeLEDsettings();")
 
-            ledSettingsData = cacheInfoData.ledSettings;
+            for (let index = 0; index < cacheInfoData.ledSettings.length; index++) {
+                createAndUpdateLedSetting(index);
+            }
+        }
 
-            $('#dimValueStep').val(ledSettingsData.dimValueStep);
-            $('#dimValueStepDelay').val(ledSettingsData.dimValueStepDelay);
-
+        function createAndUpdateLedSetting(led_number) {
+            ledSettingElement = `
+            <div>
+                <small id="led_%led%_setting">settings for the LED dimmer %led%</small>
+                <div>
+                    animation settings - step width (0 ... 25):
+                </div>
+                <div>
+                    <input type="number" id="dimValueStep_%led%" name="ipv4" min="0" max="25" step="1">
+                </div>
+                <div>
+                    animation settings - delay in ms per step (0 ... 50):
+                </div>
+                <div>
+                    <input type="number" id="dimValueStepDelay_%led%" min="1" max="50" step="1">
+                </div>
+            </div>
+            <hr>
+            `;
+            ledSettingElement = ledSettingElement.replace(/%led%/g, led_number);
+            if ($('#led_' + led_number + '_setting').length == 0) {
+                $('#ledSettings').append(ledSettingElement);
+            }
+            
+            $('#dimValueStep_' + led_number).val(cacheInfoData.ledSettings[led_number].dimValueStep);
+            $('#dimValueStepDelay_' + led_number).val(cacheInfoData.ledSettings[led_number].dimValueStepDelay);
         }
 
         function getMqttData() {
@@ -647,15 +683,35 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         }
 
         function changeLEDsettings() {
-            var dimValueStepSend = $('#dimValueStep').val();
-            var dimValueStepDelaySend = $('#dimValueStepDelay').val();
+            
+            var dimValueStep_0_Send = $('#dimValueStep_0').val();
+            var dimValueStepDelay_0_Send = $('#dimValueStepDelay_0').val();
 
+            var dimValueStep_1_Send = $('#dimValueStep_1').length ? $('#dimValueStep_1').val() : 0;
+            var dimValueStepDelay_1_Send = $('#dimValueStepDelay_1').length ? $('#dimValueStepDelay_1').val() : 0;
 
+            var dimValueStep_2_Send = $('#dimValueStep_2').length ? $('#dimValueStep_2').val() : 0;
+            var dimValueStepDelay_2_Send = $('#dimValueStepDelay_2').length ? $('#dimValueStepDelay_2').val() : 0;
+
+            var dimValueStep_3_Send = $('#dimValueStep_3').length ? $('#dimValueStep_3').val() : 0;
+            var dimValueStepDelay_3_Send = $('#dimValueStepDelay_3').length ? $('#dimValueStepDelay_3').val() : 0;
+
+            var dimValueStep_4_Send = $('#dimValueStep_4').length ? $('#dimValueStep_4').val() : 0;
+            var dimValueStepDelay_4_Send = $('#dimValueStepDelay_4').length ? $('#dimValueStepDelay_4').val() : 0;
+            
             var data = {};
-            data["dimValueStepSend"] = dimValueStepSend;
-            data["dimValueStepDelaySend"] = dimValueStepDelaySend;
+            data["dimValueStep_0_Send"] = dimValueStep_0_Send;
+            data["dimValueStepDelay_0_Send"] = dimValueStepDelay_0_Send;
+            data["dimValueStep_1_Send"] = dimValueStep_1_Send;
+            data["dimValueStepDelay_1_Send"] = dimValueStepDelay_1_Send;
+            data["dimValueStep_2_Send"] = dimValueStep_2_Send;
+            data["dimValueStepDelay_2_Send"] = dimValueStepDelay_2_Send;
+            data["dimValueStep_3_Send"] = dimValueStep_3_Send;
+            data["dimValueStepDelay_3_Send"] = dimValueStepDelay_3_Send;
+            data["dimValueStep_4_Send"] = dimValueStep_4_Send;
+            data["dimValueStepDelay_4_Send"] = dimValueStepDelay_4_Send;
 
-            console.log("send to server: dimValueStepSend: " + dimValueStepSend + " dimValueStepDelaySend: " + dimValueStepDelaySend);
+            console.log("send to server: dimValueStep_0_Send: " + dimValueStep_0_Send + " dimValueStepDelay_0_Send: " + dimValueStepDelay_0_Send);
 
             const urlEncodedDataPairs = [];
 
@@ -681,9 +737,9 @@ const char INDEX_HTML[] PROGMEM = R"=====(
 
             strResult = JSON.parse(xmlHttp.responseText);
             console.log("got from server: " + strResult);
-            console.log("got from server - strResult.dtuHostIpDomain: " + strResult.dimValueStep + " - cmp with: " + dimValueStepSend);
+            console.log("got from server - strResult.dimValueStep_0: " + strResult.dimValueStep_0 + " - cmp with: " + dimValueStep_0_Send);
 
-            if (strResult.dimValueStep == dimValueStepSend) {
+            if (strResult.dimValueStep_0 == dimValueStep_0_Send) {
                 console.log("check saved data - OK");
                 showAlert('LED settings changed', 'The new settings will be applied.', 'alert-success');
             } else {
@@ -1187,7 +1243,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
 
         function getDataValues() {
             $.ajax({
-                url: '/api/data.json',
+                url: 'api/data.json',
 
                 type: 'GET',
                 contentType: false,
@@ -1205,7 +1261,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
 
         function getInfoValues() {
             $.ajax({
-                url: '/api/info.json',
+                url: 'api/info.json',
 
                 type: 'GET',
                 contentType: false,

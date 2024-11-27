@@ -67,7 +67,9 @@ bool UserConfigManager::loadConfig(UserConfig &config)
     {
         Serial.println(F("UserConfigManager::loadConfig --- ERROR: config corrupted, reset to default"));
         saveConfig(defaultConfig);
-    } else {
+    }
+    else
+    {
         Serial.println("UserConfigManager::loadConfig - config loaded from json: " + String(filePath));
     }
 
@@ -119,11 +121,76 @@ void UserConfigManager::printConfigdata()
     Serial.println(userConfig.wifiPassword);
 
     // led settings
-    Serial.print(F("dimValueStep: \t\t"));
-    Serial.println(userConfig.dimValueStep);
-    Serial.print(F("dimValueStepDelay: \t"));
-    Serial.println(userConfig.dimValueStepDelay);
-    
+    for (size_t i = 0; i < LED_DIMMER_COUNT; i++)
+    {
+        Serial.println("\nLED " + String(i) + " setting: \t\t");
+        Serial.print(F("nledPWMpin: \t\t"));
+        Serial.println(userConfig.ledDimmerConfigs[i].ledPWMpin);
+        Serial.print(F("dimValueStep: \t\t"));
+        Serial.println(userConfig.ledDimmerConfigs[i].dimValueStep);
+        Serial.print(F("dimValueStepDelay: \t"));
+        Serial.println(userConfig.ledDimmerConfigs[i].dimValueStepDelay);
+        Serial.print(F("dimValueRangeLow: \t"));
+        Serial.println(userConfig.ledDimmerConfigs[i].dimValueRangeLow);
+        Serial.print(F("dimValueRangeHigh: \t"));
+        Serial.println(userConfig.ledDimmerConfigs[i].dimValueRangeHigh);
+    }
+
+    // Serial.print(F("\nledPWMpin_0: \t\t"));
+    // Serial.println(userConfig.ledPWMpin_0);
+    // Serial.print(F("dimValueStep_0: \t\t"));
+    // Serial.println(userConfig.dimValueStep_0);
+    // Serial.print(F("dimValueStepDelay_0: \t"));
+    // Serial.println(userConfig.dimValueStepDelay_0);
+    // Serial.print(F("dimValueRangeLow_0: \t"));
+    // Serial.println(userConfig.dimValueRangeLow_0);
+    // Serial.print(F("dimValueRangeHigh_0: \t"));
+    // Serial.println(userConfig.dimValueRangeHigh_0);
+
+    // Serial.print(F("\nledPWMpin_1: \t\t"));
+    // Serial.println(userConfig.ledPWMpin_1);
+    // Serial.print(F("dimValueStep_1: \t\t"));
+    // Serial.println(userConfig.dimValueStep_1);
+    // Serial.print(F("dimValueStepDelay_1: \t"));
+    // Serial.println(userConfig.dimValueStepDelay_1);
+    // Serial.print(F("dimValueRangeLow_1: \t"));
+    // Serial.println(userConfig.dimValueRangeLow_1);
+    // Serial.print(F("dimValueRangeHigh_1: \t"));
+    // Serial.println(userConfig.dimValueRangeHigh_1);
+
+    // Serial.print(F("\nledPWMpin_2: \t\t"));
+    // Serial.println(userConfig.ledPWMpin_2);
+    // Serial.print(F("dimValueStep_2: \t\t"));
+    // Serial.println(userConfig.dimValueStep_2);
+    // Serial.print(F("dimValueStepDelay_2: \t"));
+    // Serial.println(userConfig.dimValueStepDelay_2);
+    // Serial.print(F("dimValueRangeLow_2: \t"));
+    // Serial.println(userConfig.dimValueRangeLow_2);
+    // Serial.print(F("dimValueRangeHigh_2: \t"));
+    // Serial.println(userConfig.dimValueRangeHigh_2);
+
+    // Serial.print(F("\nledPWMpin_3: \t\t"));
+    // Serial.println(userConfig.ledPWMpin_3);
+    // Serial.print(F("dimValueStep_3: \t\t"));
+    // Serial.println(userConfig.dimValueStep_3);
+    // Serial.print(F("dimValueStepDelay_3: \t"));
+    // Serial.println(userConfig.dimValueStepDelay_3);
+    // Serial.print(F("dimValueRangeLow_3: \t"));
+    // Serial.println(userConfig.dimValueRangeLow_3);
+    // Serial.print(F("dimValueRangeHigh_3: \t"));
+    // Serial.println(userConfig.dimValueRangeHigh_3);
+
+    // Serial.print(F("\nledPWMpin_4: \t\t"));
+    // Serial.println(userConfig.ledPWMpin_4);
+    // Serial.print(F("dimValueStep_4: \t\t"));
+    // Serial.println(userConfig.dimValueStep_4);
+    // Serial.print(F("dimValueStepDelay_4: \t"));
+    // Serial.println(userConfig.dimValueStepDelay_4);
+    // Serial.print(F("dimValueRangeLow_4: \t"));
+    // Serial.println(userConfig.dimValueRangeLow_4);
+    // Serial.print(F("dimValueRangeHigh_4: \t"));
+    // Serial.println(userConfig.dimValueRangeHigh_4);
+
     // mqtt settings
     Serial.print(F("\nmqtt host: \t\t"));
     Serial.println(userConfig.mqttBrokerIpDomain);
@@ -155,8 +222,45 @@ JsonDocument UserConfigManager::mappingStructToJson(const UserConfig &config)
     doc["wifi"]["ssid"] = config.wifiSsid;
     doc["wifi"]["pass"] = config.wifiPassword;
 
-    doc["led"]["dimValueStep"] = config.dimValueStep;
-    doc["led"]["dimValueStepDelay"] = config.dimValueStepDelay;
+    for (size_t i = 0; i < LED_DIMMER_COUNT; i++)
+    {
+
+        doc["led"][i]["ledPWMpin"] = config.ledDimmerConfigs[i].ledPWMpin;
+        doc["led"][i]["dimValueStep"] = config.ledDimmerConfigs[i].dimValueStep;
+        doc["led"][i]["dimValueStepDelay"] = config.ledDimmerConfigs[i].dimValueStepDelay;
+        doc["led"][i]["dimValueRangeLow"] = config.ledDimmerConfigs[i].dimValueRangeLow;
+        doc["led"][i]["dimValueRangeHigh"] = config.ledDimmerConfigs[i].dimValueRangeHigh;
+    }
+
+    // doc["led"]["ledPWMpin_0"] = config.ledPWMpin_0;
+    // doc["led"]["dimValueStep_0"] = config.dimValueStep_0;
+    // doc["led"]["dimValueStepDelay_0"] = config.dimValueStepDelay_0;
+    // doc["led"]["dimValueRangeLow_0"] = config.dimValueRangeLow_0;
+    // doc["led"]["dimValueRangeHigh_0"] = config.dimValueRangeHigh_0;
+
+    // doc["led"]["ledPWMpin_1"] = config.ledPWMpin_1;
+    // doc["led"]["dimValueStep_1"] = config.dimValueStep_1;
+    // doc["led"]["dimValueStepDelay_1"] = config.dimValueStepDelay_1;
+    // doc["led"]["dimValueRangeLow_1"] = config.dimValueRangeLow_1;
+    // doc["led"]["dimValueRangeHigh_1"] = config.dimValueRangeHigh_1;
+
+    // doc["led"]["ledPWMpin_2"] = config.ledPWMpin_2;
+    // doc["led"]["dimValueStep_2"] = config.dimValueStep_2;
+    // doc["led"]["dimValueStepDelay_2"] = config.dimValueStepDelay_2;
+    // doc["led"]["dimValueRangeLow_2"] = config.dimValueRangeLow_2;
+    // doc["led"]["dimValueRangeHigh_2"] = config.dimValueRangeHigh_2;
+
+    // doc["led"]["ledPWMpin_3"] = config.ledPWMpin_3;
+    // doc["led"]["dimValueStep_3"] = config.dimValueStep_3;
+    // doc["led"]["dimValueStepDelay_3"] = config.dimValueStepDelay_3;
+    // doc["led"]["dimValueRangeLow_3"] = config.dimValueRangeLow_3;
+    // doc["led"]["dimValueRangeHigh_3"] = config.dimValueRangeHigh_3;
+
+    // doc["led"]["ledPWMpin_4"] = config.ledPWMpin_4;
+    // doc["led"]["dimValueStep_4"] = config.dimValueStep_4;
+    // doc["led"]["dimValueStepDelay_4"] = config.dimValueStepDelay_4;
+    // doc["led"]["dimValueRangeLow_4"] = config.dimValueRangeLow_4;
+    // doc["led"]["dimValueRangeHigh_4"] = config.dimValueRangeHigh_4;
 
     doc["mqtt"]["active"] = config.mqttActive;
     doc["mqtt"]["brokerIP"] = config.mqttBrokerIpDomain;
@@ -179,8 +283,44 @@ void UserConfigManager::mappingJsonToStruct(JsonDocument doc)
     String(doc["wifi"]["ssid"].as<String>()).toCharArray(userConfig.wifiSsid, sizeof(userConfig.wifiSsid));
     String(doc["wifi"]["pass"].as<String>()).toCharArray(userConfig.wifiPassword, sizeof(userConfig.wifiPassword));
 
-    userConfig.dimValueStep = doc["led"]["dimValueStep"].as<uint8_t>();
-    userConfig.dimValueStepDelay = doc["led"]["dimValueStepDelay"].as<uint8_t>();
+    for (size_t i = 0; i < LED_DIMMER_COUNT; i++)
+    {
+        userConfig.ledDimmerConfigs[i].ledPWMpin = doc["led"][i]["ledPWMpin"].as<uint8_t>();
+        userConfig.ledDimmerConfigs[i].dimValueStep = doc["led"][i]["dimValueStep"].as<uint8_t>();
+        userConfig.ledDimmerConfigs[i].dimValueStepDelay = doc["led"][i]["dimValueStepDelay"].as<uint8_t>();
+        userConfig.ledDimmerConfigs[i].dimValueRangeLow = doc["led"][i]["dimValueRangeLow"].as<uint16_t>();
+        userConfig.ledDimmerConfigs[i].dimValueRangeHigh = doc["led"][i]["dimValueRangeHigh"].as<uint16_t>();
+    }
+
+    // userConfig.ledPWMpin_0 = doc["led"]["ledPWMpin_0"].as<uint8_t>();
+    // userConfig.dimValueStep_0 = doc["led"]["dimValueStep_0"].as<uint8_t>();
+    // userConfig.dimValueStepDelay_0 = doc["led"]["dimValueStepDelay_0"].as<uint8_t>();
+    // userConfig.dimValueRangeLow_0 = doc["led"]["dimValueRangeLow_0"].as<uint16_t>();
+    // userConfig.dimValueRangeHigh_0 = doc["led"]["dimValueRangeHigh_0"].as<uint16_t>();
+
+    // userConfig.ledPWMpin_1 = doc["led"]["ledPWMpin_1"].as<uint8_t>();
+    // userConfig.dimValueStep_1 = doc["led"]["dimValueStep_1"].as<uint8_t>();
+    // userConfig.dimValueStepDelay_1 = doc["led"]["dimValueStepDelay_1"].as<uint8_t>();
+    // userConfig.dimValueRangeLow_1 = doc["led"]["dimValueRangeLow_1"].as<uint16_t>();
+    // userConfig.dimValueRangeHigh_1 = doc["led"]["dimValueRangeHigh_1"].as<uint16_t>();
+
+    // userConfig.ledPWMpin_2 = doc["led"]["ledPWMpin_2"].as<uint8_t>();
+    // userConfig.dimValueStep_2 = doc["led"]["dimValueStep_2"].as<uint8_t>();
+    // userConfig.dimValueStepDelay_2 = doc["led"]["dimValueStepDelay_2"].as<uint8_t>();
+    // userConfig.dimValueRangeLow_2 = doc["led"]["dimValueRangeLow_2"].as<uint16_t>();
+    // userConfig.dimValueRangeHigh_2 = doc["led"]["dimValueRangeHigh_2"].as<uint16_t>();
+
+    // userConfig.ledPWMpin_3 = doc["led"]["ledPWMpin_3"].as<uint8_t>();
+    // userConfig.dimValueStep_3 = doc["led"]["dimValueStep_3"].as<uint8_t>();
+    // userConfig.dimValueStepDelay_3 = doc["led"]["dimValueStepDelay_3"].as<uint8_t>();
+    // userConfig.dimValueRangeLow_3 = doc["led"]["dimValueRangeLow_3"].as<uint16_t>();
+    // userConfig.dimValueRangeHigh_3 = doc["led"]["dimValueRangeHigh_3"].as<uint16_t>();
+
+    // userConfig.ledPWMpin_4 = doc["led"]["ledPWMpin_4"].as<uint8_t>();
+    // userConfig.dimValueStep_4 = doc["led"]["dimValueStep_4"].as<uint8_t>();
+    // userConfig.dimValueStepDelay_4 = doc["led"]["dimValueStepDelay_4"].as<uint8_t>();
+    // userConfig.dimValueRangeLow_4 = doc["led"]["dimValueRangeLow_4"].as<uint16_t>();
+    // userConfig.dimValueRangeHigh_4 = doc["led"]["dimValueRangeHigh_4"].as<uint16_t>();
 
     userConfig.mqttActive = doc["mqtt"]["active"].as<bool>();
     String(doc["mqtt"]["brokerIP"].as<String>()).toCharArray(userConfig.mqttBrokerIpDomain, sizeof(userConfig.mqttBrokerIpDomain));
@@ -228,6 +368,23 @@ String UserConfigManager::createWebPage(bool updated)
     for (JsonPair kv : obj)
     {
         String mainKey = String(kv.key().c_str());
+        // exception for led iteration needed - json is led.0.ledPWMpin and so on
+        if (mainKey == "led")
+        {
+            for (size_t i = 0; i < LED_DIMMER_COUNT; i++)
+            {
+                result += "<div><label><h4>LED " + String(i) + "</h4></label></div>";
+                JsonObject obj1 = (kv.value()[i]).as<JsonObject>();
+                for (JsonPair kv1 : obj1)
+                {
+                    String key = kv1.key().c_str();
+                    String value = kv1.value();
+                    result += "<div class=\"form-group row\"><div class=\"col-2\"><label>" + key + "</label></div><div class=\"col-10\"><input name=\"led." + String(i) + "." + key + "\" class=\"form-control\" type=\"text\" value=\"" + value + "\" /></div></div>";
+                }
+            }
+            continue;
+        } // end of exception for led iteration
+        
         result += "<div><label><h4>" + mainKey + "</h4></label></div>";
         // 1 layer below
         JsonObject obj1 = (kv.value()).as<JsonObject>();
@@ -258,6 +415,10 @@ String UserConfigManager::getWebHandler(JsonDocument doc)
             Serial.println(F("Failed to open file for writing"));
             return "<html><body>ERROR - failed to open /userconfig.json</body></html>";
         }
+        // Serial.println(F("\nCONFIG web - got new config from web: "));
+        // // show the new config
+        // serializeJsonPretty(doc, Serial);
+        // Serial.println(F("\nCONFIG web - save new config to file"));
         serializeJson(doc, file);
         // serializeJsonPretty(doc, Serial);
         Serial.println("WEBconfig - config saved to json: " + String(filePath));

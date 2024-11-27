@@ -8,6 +8,17 @@
 
 #define CONFIG_FILE_PATH "/userconfig.json"
 
+#define LED_DIMMER_COUNT 5 // count of the available dimmer leds
+
+struct ledDimmerConfig
+{
+    uint8_t ledPWMpin             = 255;   // first init with Pin 4 as base functionality
+    uint8_t dimValueStep          = 1;   // in percent 0-100
+    uint8_t dimValueStepDelay     = 10;
+    uint16_t dimValueRangeLow     = 0;   // 0-1023
+    uint16_t dimValueRangeHigh    = 1023;// 0-1023
+};
+
 struct UserConfig
 {
     char wifiSsid[64]             = "mySSID";
@@ -23,8 +34,7 @@ struct UserConfig
     boolean mqttActive            = false;
 
     // led settings
-    uint8_t dimValueStep          = 1;
-    uint8_t dimValueStepDelay     = 10;
+    ledDimmerConfig ledDimmerConfigs[LED_DIMMER_COUNT];
 
     boolean wifiAPstart           = true;
     int selectedUpdateChannel     = 0; // 0 - release 1 - snapshot

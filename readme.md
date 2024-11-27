@@ -30,13 +30,14 @@
 
 - Easy integration of a PWM driven LED driver
 - after main setup it should be seamlessly integratable in existing smart home system e.g. HomeAssistant or openHAB via MQTT Autodiscovery/ AutoConfig
-- Extendable to more direct LED controls
+- Extendable to more direct LED controls (currently limited to 5 pins/ PWM controlable driver)
 
 ## features
 
 - LED settings
   - steps = resolution of transitions at changing to a new target dimming value
   - stepDelay = time in milli seconds to wait per stepsize
+  - used PIN (not usable PINs: ledPWMpin == 255 || ledPWMpin <= 1 || ledPWMpin == 3 || (ledPWMpin >= 6 && ledPWMpin <= 11) || ledPWMpin == 24 || ledPWMpin >= 34)
 - serving the read data per /api/data.json
 - serving own access point in factory mode for first setup
 - web application will be directly served by the system
@@ -55,16 +56,26 @@
 
 ```json 
 {
-  "ntpStamp": 1728459054,
-  "starttime": 1728412482,
-  "led_0": {
-    "mainSwitch": 0,
-    "dimValue": 0,
-    "dimValueTarget": 0,
-    "dimValueRaw": 0,
-    "dimValueStep": 1,
-    "dimValueStepDelay": 3
-  }
+  "ntpStamp": 1729431663,
+  "starttime": 1729431519,
+  "leds": [
+    {
+      "mainSwitch": 0,
+      "dimValue": 0,
+      "dimValueTarget": 0,
+      "dimValueRaw": 0,
+      "dimValueStep": 1,
+      "dimValueStepDelay": 5
+    },
+    {
+      "mainSwitch": 0,
+      "dimValue": 0,
+      "dimValueTarget": 0,
+      "dimValueRaw": 0,
+      "dimValueStep": 1,
+      "dimValueStepDelay": 4
+    }
+  ]
 }
 ```
 </details>
@@ -90,10 +101,18 @@
     "selectedUpdateChannel": "0",
     "updateAvailable": 0
   },
-  "ledSettings": {
-    "dimValueStep": 1,
-    "dimValueStepDelay": 3
-  },
+ "ledSettings": [
+    {
+      "ledPWMpin": 4,
+      "dimValueStep": 1,
+      "dimValueStepDelay": 5
+    },
+    {
+      "ledPWMpin": 5,
+      "dimValueStep": 1,
+      "dimValueStepDelay": 4
+    }
+  ],
   "mqttConnection": {
     "mqttActive": 1,
     "mqttIp": "homeassistant",

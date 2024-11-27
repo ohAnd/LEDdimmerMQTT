@@ -1,18 +1,23 @@
 // dimmerLed.cpp
 #include "dimmerLed.h"
 
-ledDimmerStruct ledDimmer_0;
-boolean dimmerUp = true;
-
 DimmerLed::DimmerLed() {}
 
-void DimmerLed::setup(uint8_t dimValueStep, uint8_t dimValueStepDelay)
+void DimmerLed::setup(uint8_t ledPWMpin)
 {
-    pinMode(4, OUTPUT);
+    dimLedValues.ledPWMpin = ledPWMpin;
+    // if PIN not usable for PWM return
+    if (ledPWMpin == 255 || ledPWMpin <= 1 || ledPWMpin == 3 || (ledPWMpin >= 6 && ledPWMpin <= 11) || ledPWMpin == 24 || ledPWMpin >= 34)
+    {
+        Serial.println("[pin " + String(dimLedValues.ledPWMpin) + "] is not usable for PWM");
+        dimLedValues.ledPWMpin = 255;
+        return;
+    }
+    pinMode(dimLedValues.ledPWMpin, OUTPUT);
     analogWriteResolution(12);
-    analogWrite(4, 0);
-    dimLedValues.dimValueStep = dimValueStep;
-    dimLedValues.dimValueStepDelay = dimValueStepDelay;
+    analogWrite(dimLedValues.ledPWMpin, 0);
+
+    Serial.println("DIMMERLED\t[pin " + String(dimLedValues.ledPWMpin) + "]");
 }
 
 // loop has to be called every 1 ms
@@ -31,7 +36,8 @@ void DimmerLed::loop()
     // }
 
     // according to stepwith without delay
-    if (dimLedValues.dimValueStepDelay == 0) {
+    if (dimLedValues.dimValueStepDelay == 0)
+    {
         dimLedValues.dimValueRaw = calculateValue(dimLedValues.dimValueTarget, true);
     }
     // according to stepwith with delay
@@ -42,25 +48,26 @@ void DimmerLed::loop()
 
         if (dimValueRaw != dimValueRawTarget)
         {
-            // Serial.println("change dimming .... to " + String(dimValueRawTarget) + " %" + " from " + String(dimValueRaw) + " % == ");
+            // Serial.println("[pin " + dimLedValues.ledPWMpin + "] change dimming .... to " + String(dimValueRawTarget) + " %" + " from " + String(dimValueRaw) + " % == ");
             if (dimValueRaw < dimValueRawTarget)
             {
                 dimValueRaw += dimLedValues.dimValueStep;
-                // Serial.print("new percentage++: " + String(dimValueRaw));
+                // Serial.print("[pin " + dimLedValues.ledPWMpin + "] new percentage++: " + String(dimValueRaw));
                 if (dimValueRaw > dimValueRawTarget)
                     dimValueRaw = dimValueRawTarget;
             }
             else
             {
                 dimValueRaw -= dimLedValues.dimValueStep;
-                // Serial.print("new percentage--: " + String(dimValueRaw));
+                // Serial.print("[pin " + dimLedValues.ledPWMpin + "] new percentage--: " + String(dimValueRaw));
                 if (dimValueRaw < dimValueRawTarget)
                     dimValueRaw = dimValueRawTarget;
             }
             // set new value
             dimLedValues.dimValueRaw = dimValueRaw;
-            // Serial.println(" -> new raw value: " + String(dimLedValues.dimValueRaw));
-            analogWrite(4, dimLedValues.dimValueRaw);
+            // Serial.println("-> new raw value: " + String(dimLedValues.dimValueRaw));
+            if (dimLedValues.ledPWMpin != 255) // if pin is valid
+                analogWrite(dimLedValues.ledPWMpin, dimLedValues.dimValueRaw);
             dimLedValues.inTransition = true;
         }
         else
@@ -77,7 +84,7 @@ void DimmerLed::loop()
     // if (loopCounter % 1000 == 0)
     // {
     // checkNightMode();
-    // Serial.println("current brightness: " + String(brightness));
+    // Serial.println("[pin " + dimLedValues.ledPWMpin + "] current brightness: " + String(brightness));
     // }
 
     loopCounter++;
@@ -91,13 +98,29 @@ void DimmerLed::loop()
         dimLedValues.mainSwitch = true;
 }
 
-void DimmerLed::setDimValue(uint8_t dimValue, uint8_t dimValueStep, uint8_t dimValueStepDelay)
+void DimmerLed::setDimValue(uint8_t dimValue)
 {
     dimLedValues.dimValueRawOld = dimLedValues.dimValueRaw;
     dimLedValues.dimValueTarget = dimValue;
+    dimLedValues.dimTargetStartTimestamp = millis();
+}
+
+void DimmerLed::setConfigValues(uint8_t dimValueStep, uint8_t dimValueStepDelay, uint16_t dimValueRangeLow, uint16_t dimValueRangeHigh)
+{
     dimLedValues.dimValueStep = dimValueStep;
     dimLedValues.dimValueStepDelay = dimValueStepDelay;
-    dimLedValues.dimValueStepTimer = millis();
+    dimLedValues.dimValueRangeLow = dimValueRangeLow;
+    // if not configured correctly set to default
+    if (dimValueRangeHigh <= dimValueRangeLow || dimValueRangeHigh > 1023)
+    {
+        dimLedValues.dimValueRangeLow = 0;
+        dimLedValues.dimValueRangeHigh = 1023;
+    }
+    else
+    {
+        dimLedValues.dimValueRangeLow = dimValueRangeLow;
+        dimLedValues.dimValueRangeHigh = dimValueRangeHigh;
+    }
 }
 
 uint8_t DimmerLed::getDimValue()
@@ -116,13 +139,13 @@ uint16_t DimmerLed::calculateValue(uint16_t inValue, boolean isRaw)
 {
     if (isRaw)
     {
-        // Serial.print(" - to raw value from: " + String(inValue));
+        // Serial.print("[pin " + dimLedValues.ledPWMpin + "]  - to raw value from: " + String(inValue));
         return map(inValue, 0, 100, dimLedValues.dimValueRangeLow, dimLedValues.dimValueRangeHigh);
     }
     else
     {
         uint16_t valuePercentRound = map(inValue, dimLedValues.dimValueRangeLow, dimLedValues.dimValueRangeHigh, 0, 1000);
-        // Serial.println("raw to perc: " + String(valuePercentRound) + " got: " + String(inValue));
+        // Serial.println("[pin " + dimLedValues.ledPWMpin + "] raw to perc: " + String(valuePercentRound) + " got: " + String(inValue));
         valuePercentRound = round(float(valuePercentRound) / 10);
         return valuePercentRound;
     }
